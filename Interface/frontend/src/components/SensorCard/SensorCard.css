@@ -1,0 +1,215 @@
+/* SensorCard Component Styles */
+
+.sensor-card {
+  position: relative;
+  background-color: var(--color-bg-primary);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.sensor-card--warning {
+  border-color: var(--color-warning-border);
+}
+
+.sensor-card--critical {
+  border-color: var(--color-error-border);
+}
+
+.sensor-card--offline {
+  opacity: 0.9;
+  border-style: dashed;
+  border-color: var(--color-border-dark);
+  background-color: var(--color-bg-secondary);
+}
+
+.sensor-card-accent {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+}
+
+.sensor-card-accent--warning {
+  background-color: var(--color-warning-light);
+}
+
+.sensor-card-accent--critical {
+  background-color: var(--color-error);
+}
+
+/* Header */
+.sensor-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 12px 12px 0;
+}
+
+.sensor-card--warning .sensor-card-header,
+.sensor-card--critical .sensor-card-header {
+  padding-left: 16px;
+}
+
+.sensor-card-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.sensor-card-name {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-tertiary);
+  margin: 0;
+}
+
+.sensor-card-adapter {
+  font-size: 9px;
+  color: var(--color-text-disabled);
+}
+
+.sensor-card-status {
+  padding: 3px 6px;
+  border-radius: var(--radius-sm);
+  font-size: 9px;
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+}
+
+.sensor-card-status--success {
+  background-color: var(--color-success-bg);
+  color: var(--color-success-dark);
+  border: 1px solid var(--color-success-border);
+}
+
+.sensor-card-status--warning {
+  background-color: var(--color-warning-bg);
+  color: var(--color-warning-darker);
+  border: 1px solid var(--color-warning-border);
+}
+
+.sensor-card-status--error {
+  background-color: var(--color-error-bg);
+  color: var(--color-error-darker);
+  border: 1px solid var(--color-error-border);
+}
+
+.sensor-card-status--default {
+  background-color: var(--color-bg-quaternary);
+  color: var(--color-text-subtle);
+  border: 1px solid var(--color-border-dark);
+}
+
+/* Value Section */
+.sensor-card-value-section {
+  display: flex;
+  align-items: baseline;
+  padding: 8px 12px 0;
+}
+
+.sensor-card--warning .sensor-card-value-section,
+.sensor-card--critical .sensor-card-value-section {
+  padding-left: 16px;
+}
+
+.sensor-card-value {
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  letter-spacing: -0.75px;
+  line-height: 1.2;
+}
+
+.sensor-card-value--warning {
+  color: var(--color-warning-dark);
+}
+
+.sensor-card-value--critical {
+  color: var(--color-error-dark);
+}
+
+.sensor-card-unit {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-subtle);
+  margin-left: 4px;
+}
+
+/* Chart */
+.sensor-card-chart {
+  height: 48px;
+  padding: 0 12px;
+  margin-top: 8px;
+  background-image: linear-gradient(180deg, rgba(0, 0, 0, 0.05) 5%, rgba(0, 0, 0, 0) 5%),
+                    linear-gradient(90deg, rgba(0, 0, 0, 0.05) 5%, rgba(0, 0, 0, 0) 5%);
+  background-size: 10px 10px;
+}
+
+.sparkline {
+  width: 100%;
+  height: 100%;
+  color: var(--color-primary);
+}
+
+.sensor-card--warning .sparkline {
+  color: var(--color-warning);
+}
+
+.sensor-card--critical .sparkline {
+  color: var(--color-error);
+}
+
+/* Footer */
+.sensor-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background-color: rgba(248, 250, 252, 0.5);
+  border-top: 1px solid var(--color-border-light);
+  margin-top: auto;
+}
+
+.sensor-card-footer--warning {
+  background-color: rgba(255, 251, 235, 0.2);
+  border-top-color: var(--color-warning-border-light);
+}
+
+.sensor-card-footer--critical {
+  background-color: rgba(254, 242, 242, 0.2);
+  border-top-color: var(--color-error-border-light);
+}
+
+.sensor-card-timestamp {
+  font-size: 9px;
+  color: var(--color-text-disabled);
+}
+
+.sensor-card-rate {
+  font-size: 9px;
+  font-weight: var(--font-weight-bold);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sensor-card-rate--positive {
+  color: var(--color-success-dark);
+}
+
+.sensor-card-rate--neutral {
+  color: var(--color-text-disabled);
+}
+
+.sensor-card-rate--warning {
+  color: var(--color-warning-darker);
+}
+
+.sensor-card-rate--negative {
+  color: var(--color-error-dark);
+}
+

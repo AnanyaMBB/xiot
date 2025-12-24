@@ -1,0 +1,206 @@
+/* Sidebar Component Styles */
+
+.sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: var(--sidebar-width);
+  background-color: var(--color-sidebar-bg);
+  border-right: 1px solid var(--color-sidebar-border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--spacing-lg) 0;
+  z-index: 100;
+}
+
+/* Logo */
+.sidebar-logo {
+  margin-bottom: var(--spacing-xl);
+}
+
+.logo-icon {
+  width: 40px;
+  height: 40px;
+  background-color: var(--color-primary-bg-hover);
+  border-radius: var(--radius-xl);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.3);
+}
+
+.logo-icon svg {
+  color: var(--color-primary);
+}
+
+/* Navigation */
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  width: 100%;
+  padding: 0 var(--spacing-xs);
+}
+
+.nav-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-xxs);
+  padding: var(--spacing-xs);
+  border-radius: var(--radius-lg);
+  text-decoration: none;
+  transition: background-color var(--transition-fast);
+}
+
+.nav-item:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.nav-item--active {
+  background-color: var(--color-primary-bg);
+}
+
+.nav-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 0;
+}
+
+.nav-icon svg {
+  color: var(--color-text-disabled);
+  transition: color var(--transition-fast);
+}
+
+.nav-item:hover .nav-icon svg {
+  color: var(--color-text-subtle);
+}
+
+.nav-item--active .nav-icon svg {
+  color: var(--color-primary-light);
+}
+
+.nav-label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-disabled);
+  opacity: 0.7;
+  transition: color var(--transition-fast), opacity var(--transition-fast);
+}
+
+.nav-item:hover .nav-label {
+  opacity: 0.9;
+}
+
+.nav-item--active .nav-label {
+  color: var(--color-primary-light);
+  opacity: 0.8;
+}
+
+/* Active indicator */
+.nav-indicator {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 32px;
+  background-color: var(--color-primary);
+  border-radius: 0 9999px 9999px 0;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.nav-item--active .nav-indicator {
+  opacity: 1;
+}
+
+/* Footer */
+.sidebar-footer {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.sidebar-divider {
+  width: 32px;
+  height: 1px;
+  background-color: var(--color-sidebar-hover);
+}
+
+.logout-button {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-sidebar-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color var(--transition-fast);
+}
+
+.logout-button:hover {
+  background-color: var(--color-sidebar-hover);
+}
+
+.logout-button svg {
+  color: var(--color-text-disabled);
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-sidebar-hover);
+  box-shadow: 0 0 0 2px var(--color-sidebar-hover);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-disabled);
+}
+
+/* App Layout */
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.main-content {
+  flex: 1;
+  margin-left: var(--sidebar-width);
+  background-color: var(--color-bg-tertiary);
+  overflow-x: hidden;
+}
+
+/* Loading Screen */
+.loading-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background-color: var(--color-bg-tertiary);
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--color-border-default);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+

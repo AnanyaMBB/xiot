@@ -1,26 +1,18 @@
 import { useState } from 'react';
-import Button from '../../components/Button/Button';
 import './ScenarioConfig.css';
 
 // Icons
+const SearchIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="11" cy="11" r="8" />
+    <path d="M21 21l-4.35-4.35" />
+  </svg>
+);
+
 const HistoryIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <circle cx="12" cy="12" r="10" />
     <polyline points="12 6 12 12 16 14" />
-  </svg>
-);
-
-const SaveIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-    <polyline points="17 21 17 13 7 13 7 21" />
-    <polyline points="7 3 7 8 15 8" />
-  </svg>
-);
-
-const LightningIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
   </svg>
 );
 
@@ -31,48 +23,9 @@ const PlusIcon = () => (
   </svg>
 );
 
-const ThermometerIcon = () => (
+const LightningIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z" />
-  </svg>
-);
-
-const CO2Icon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <circle cx="12" cy="12" r="10" />
-    <path d="M8 12h8" />
-    <path d="M12 8v8" />
-  </svg>
-);
-
-const AlertTriangleIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-    <line x1="12" y1="9" x2="12" y2="13" />
-    <line x1="12" y1="17" x2="12.01" y2="17" />
-  </svg>
-);
-
-const BellIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-  </svg>
-);
-
-const SettingsIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <circle cx="12" cy="12" r="3" />
-    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-  </svg>
-);
-
-const WebhookIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M18 16.98h-5.99c-1.66 0-3.01-1.34-3.01-3s1.35-3 3.01-3H18" />
-    <path d="M6 16.98h-.01c-2.76 0-5-2.24-5-5s2.24-5 5-5h.01" />
-    <path d="M12 8.02V3" />
-    <path d="M18.01 8.02c2.76 0 5 2.24 5 5s-2.24 5-5 5" />
+    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
   </svg>
 );
 
@@ -83,318 +36,634 @@ const TrashIcon = () => (
   </svg>
 );
 
+const ClockIcon = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="12" cy="12" r="10" />
+    <polyline points="12 6 12 12 16 14" />
+  </svg>
+);
+
+const BellIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+  </svg>
+);
+
+const WebhookIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+  </svg>
+);
+
+const WarningIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+    <line x1="12" y1="9" x2="12" y2="13" />
+    <line x1="12" y1="17" x2="12.01" y2="17" />
+  </svg>
+);
+
+const DeleteIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <polyline points="3 6 5 6 21 6" />
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    <line x1="10" y1="11" x2="10" y2="17" />
+    <line x1="14" y1="11" x2="14" y2="17" />
+  </svg>
+);
+
+// Mock data for scenarios
+const mockScenarios = [
+  {
+    id: 1,
+    name: 'Fire Detection - Main Hall',
+    description: 'Triggers an alarm when temperature exceeds critical thresholds on multiple sensors within a short timeframe.',
+    enabled: true,
+    lastTriggered: '1h ago',
+    timeWindow: 30,
+    conditions: [
+      { id: 1, baseboard: 'MKR-1000-MAIN', sensor: 'Temp Sensor A (0x45)', operator: '> Greater', value: '65.4' },
+      { id: 2, baseboard: 'MKR-1000-AUX1', sensor: 'Smoke Detect (0x21)', operator: '= Equals', value: 'HIGH (1)' }
+    ],
+    actions: {
+      notify: {
+        enabled: true,
+        recipients: ['Admin Team', 'Floor Mgr'],
+        messageTemplate: 'CRITICAL: Fire detected in Main Hall. Evacuate immediately.'
+      },
+      webhook: {
+        enabled: false,
+        endpointUrl: 'https://api.external-service.com/hooks/alert'
+      }
+    }
+  },
+  {
+    id: 2,
+    name: 'HVAC Overload Protection',
+    description: 'Monitors HVAC system load and triggers protective measures when overload is detected.',
+    enabled: true,
+    lastTriggered: '2d ago',
+    timeWindow: 60,
+    conditions: [
+      { id: 1, baseboard: 'MKR-1000-HVAC', sensor: 'Current Sensor (0x32)', operator: '> Greater', value: '15.0' }
+    ],
+    actions: {
+      notify: { enabled: true, recipients: ['Maintenance'], messageTemplate: 'HVAC overload detected.' },
+      webhook: { enabled: false, endpointUrl: '' }
+    }
+  },
+  {
+    id: 3,
+    name: 'Storm Warning Level 2',
+    description: 'Activates protective protocols when storm conditions are detected.',
+    enabled: false,
+    lastTriggered: null,
+    timeWindow: 120,
+    conditions: [],
+    actions: {
+      notify: { enabled: false, recipients: [], messageTemplate: '' },
+      webhook: { enabled: false, endpointUrl: '' }
+    }
+  },
+  {
+    id: 4,
+    name: 'Gas Leak Monitor - Lab 4',
+    description: 'Monitors gas levels in Lab 4 and triggers evacuation protocols.',
+    enabled: true,
+    lastTriggered: '5h ago',
+    timeWindow: 10,
+    conditions: [
+      { id: 1, baseboard: 'MKR-1000-LAB4', sensor: 'Gas Sensor (0x18)', operator: '> Greater', value: '50' }
+    ],
+    actions: {
+      notify: { enabled: true, recipients: ['Safety Team'], messageTemplate: 'Gas leak detected in Lab 4!' },
+      webhook: { enabled: true, endpointUrl: 'https://api.safety.com/alerts' }
+    }
+  }
+];
+
+// Mock data for dropdowns
+const baseboards = ['MKR-1000-MAIN', 'MKR-1000-AUX1', 'MKR-1000-HVAC', 'MKR-1000-LAB4'];
+const sensors = ['Temp Sensor A (0x45)', 'Smoke Detect (0x21)', 'Current Sensor (0x32)', 'Gas Sensor (0x18)', 'Humidity (0x55)'];
+const operators = ['> Greater', '< Less', '= Equals', '≠ Not Equal', '>= Greater or Equal', '<= Less or Equal'];
+const presetValues = ['HIGH (1)', 'LOW (0)', 'ACTIVE', 'INACTIVE'];
+
 const ScenarioConfig = () => {
-  const [scenarioName, setScenarioName] = useState('');
-  const [description, setDescription] = useState('');
-  const [isActive, setIsActive] = useState(true);
-  const [activeActionTab, setActiveActionTab] = useState('notify');
-  
-  // Condition groups state
-  const [conditionGroups, setConditionGroups] = useState([
-    {
-      id: 1,
-      conditions: [
-        { id: 1, sensorType: 'temp', sensorName: 'Temp Sensor A', operator: 'greater_than', value: '75', unit: '°C' },
-      ],
-      logic: 'AND'
-    },
-    {
-      id: 2,
-      conditions: [
-        { id: 2, sensorType: 'co2', sensorName: 'CO2 Sensor 2', operator: 'greater_than', value: '1000', unit: 'PPM' },
-      ],
-      logic: 'OR'
-    }
-  ]);
+  const [scenarios, setScenarios] = useState(mockScenarios);
+  const [selectedScenarioId, setSelectedScenarioId] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterTab, setFilterTab] = useState('all');
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-  // Actions state
-  const [actions, setActions] = useState([
-    {
-      id: 1,
-      type: 'notify',
-      name: 'Critical Alert Notification',
-      description: 'Send immediate push notification to @Admin Group, and trigger email alert.',
-      priority: 'high'
-    }
-  ]);
+  const selectedScenario = scenarios.find(s => s.id === selectedScenarioId);
 
-  const addConditionGroup = () => {
-    const newGroup = {
+  // Filter scenarios based on search and filter tab
+  const filteredScenarios = scenarios.filter(scenario => {
+    const matchesSearch = scenario.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesFilter = filterTab === 'all' || 
+      (filterTab === 'enabled' && scenario.enabled) || 
+      (filterTab === 'disabled' && !scenario.enabled);
+    return matchesSearch && matchesFilter;
+  });
+
+  // Update scenario field
+  const updateScenario = (field, value) => {
+    setScenarios(scenarios.map(s => 
+      s.id === selectedScenarioId ? { ...s, [field]: value } : s
+    ));
+    setHasUnsavedChanges(true);
+  };
+
+  // Update condition
+  const updateCondition = (conditionId, field, value) => {
+    setScenarios(scenarios.map(s => {
+      if (s.id === selectedScenarioId) {
+        return {
+          ...s,
+          conditions: s.conditions.map(c => 
+            c.id === conditionId ? { ...c, [field]: value } : c
+          )
+        };
+      }
+      return s;
+    }));
+    setHasUnsavedChanges(true);
+  };
+
+  // Add condition
+  const addCondition = () => {
+    const newCondition = {
       id: Date.now(),
-      conditions: [
-        { id: Date.now(), sensorType: 'temp', sensorName: 'New Sensor', operator: 'greater_than', value: '0', unit: '°C' }
-      ],
-      logic: 'AND'
+      baseboard: baseboards[0],
+      sensor: sensors[0],
+      operator: operators[0],
+      value: ''
     };
-    setConditionGroups([...conditionGroups, newGroup]);
+    setScenarios(scenarios.map(s => 
+      s.id === selectedScenarioId 
+        ? { ...s, conditions: [...s.conditions, newCondition] }
+        : s
+    ));
+    setHasUnsavedChanges(true);
   };
 
-  const updateCondition = (groupId, conditionId, field, value) => {
-    setConditionGroups(groups => 
-      groups.map(group => {
-        if (group.id === groupId) {
-          return {
-            ...group,
-            conditions: group.conditions.map(cond => 
-              cond.id === conditionId ? { ...cond, [field]: value } : cond
-            )
-          };
-        }
-        return group;
-      })
-    );
+  // Remove condition
+  const removeCondition = (conditionId) => {
+    setScenarios(scenarios.map(s => 
+      s.id === selectedScenarioId 
+        ? { ...s, conditions: s.conditions.filter(c => c.id !== conditionId) }
+        : s
+    ));
+    setHasUnsavedChanges(true);
   };
 
-  const removeConditionGroup = (groupId) => {
-    setConditionGroups(groups => groups.filter(g => g.id !== groupId));
+  // Update action
+  const updateAction = (actionType, field, value) => {
+    setScenarios(scenarios.map(s => {
+      if (s.id === selectedScenarioId) {
+        return {
+          ...s,
+          actions: {
+            ...s.actions,
+            [actionType]: {
+              ...s.actions[actionType],
+              [field]: value
+            }
+          }
+        };
+      }
+      return s;
+    }));
+    setHasUnsavedChanges(true);
   };
 
-  const getSensorIcon = (type) => {
-    switch (type) {
-      case 'temp': return <ThermometerIcon />;
-      case 'co2': return <CO2Icon />;
-      default: return <ThermometerIcon />;
+  // Add recipient
+  const addRecipient = (recipient) => {
+    if (!selectedScenario.actions.notify.recipients.includes(recipient)) {
+      updateAction('notify', 'recipients', [...selectedScenario.actions.notify.recipients, recipient]);
     }
   };
+
+  // Remove recipient
+  const removeRecipient = (recipient) => {
+    updateAction('notify', 'recipients', selectedScenario.actions.notify.recipients.filter(r => r !== recipient));
+  };
+
+  // Create new scenario
+  const createNewScenario = () => {
+    const newScenario = {
+      id: Date.now(),
+      name: 'New Scenario',
+      description: '',
+      enabled: false,
+      lastTriggered: null,
+      timeWindow: 30,
+      conditions: [],
+      actions: {
+        notify: { enabled: false, recipients: [], messageTemplate: '' },
+        webhook: { enabled: false, endpointUrl: '' }
+      }
+    };
+    setScenarios([...scenarios, newScenario]);
+    setSelectedScenarioId(newScenario.id);
+    setHasUnsavedChanges(true);
+  };
+
+  // Save scenario
+  const saveScenario = () => {
+    // In a real app, this would make an API call
+    console.log('Saving scenario:', selectedScenario);
+    setHasUnsavedChanges(false);
+  };
+
+  // Discard changes
+  const discardChanges = () => {
+    setScenarios(mockScenarios);
+    setHasUnsavedChanges(false);
+  };
+
+  // Delete scenario
+  const deleteScenario = () => {
+    if (window.confirm('Are you sure you want to delete this scenario?')) {
+      setScenarios(scenarios.filter(s => s.id !== selectedScenarioId));
+      setSelectedScenarioId(scenarios[0]?.id || null);
+      setHasUnsavedChanges(false);
+    }
+  };
+
+  if (!selectedScenario) {
+    return <div className="scenario-config">No scenario selected</div>;
+  }
 
   return (
     <div className="scenario-config">
-      <div className="scenario-container">
-        {/* Header */}
-        <header className="scenario-header">
-          <div className="scenario-header-left">
-            <h1 className="scenario-title">Scenario Configuration</h1>
-            <p className="scenario-subtitle">Create logic chains for automated monitoring and responses</p>
+      {/* Left Sidebar - Scenario List */}
+      <aside className="scenario-sidebar">
+        <div className="sidebar-top-row">
+          <div className="sidebar-search">
+            <SearchIcon />
+            <input
+              type="text"
+              placeholder="Search scenarios..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </div>
-          <div className="scenario-header-right">
-            <Button variant="secondary" icon={<HistoryIcon />} iconPosition="left">
-              History
-            </Button>
-            <Button variant="primary" icon={<SaveIcon />} iconPosition="left">
-              Save Scenario
-            </Button>
+          <button className="new-scenario-icon-btn" onClick={createNewScenario} title="New Scenario">
+            <PlusIcon />
+          </button>
+        </div>
+
+        <div className="sidebar-tabs">
+          <button 
+            className={`sidebar-tab ${filterTab === 'all' ? 'sidebar-tab--active' : ''}`}
+            onClick={() => setFilterTab('all')}
+          >
+            All
+          </button>
+          <button 
+            className={`sidebar-tab ${filterTab === 'enabled' ? 'sidebar-tab--active' : ''}`}
+            onClick={() => setFilterTab('enabled')}
+          >
+            Enabled
+          </button>
+          <button 
+            className={`sidebar-tab ${filterTab === 'disabled' ? 'sidebar-tab--active' : ''}`}
+            onClick={() => setFilterTab('disabled')}
+          >
+            Disabled
+          </button>
+        </div>
+
+        <div className="scenario-list">
+          {filteredScenarios.map(scenario => (
+            <div 
+              key={scenario.id}
+              className={`scenario-item ${scenario.id === selectedScenarioId ? 'scenario-item--active' : ''}`}
+              onClick={() => setSelectedScenarioId(scenario.id)}
+            >
+              <div className="scenario-item-header">
+                <span className="scenario-item-name">{scenario.name}</span>
+                <span className={`scenario-item-badge ${scenario.enabled ? 'badge--enabled' : 'badge--disabled'}`}>
+                  {scenario.enabled ? 'ENABLED' : 'DISABLED'}
+                </span>
+              </div>
+              <div className="scenario-item-meta">
+                <ClockIcon />
+                <span>{scenario.lastTriggered ? `Last triggered: ${scenario.lastTriggered}` : 'Never triggered'}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </aside>
+
+      {/* Main Editor */}
+      <main className="scenario-editor">
+        {/* Header */}
+        <header className="editor-header">
+          <div className="editor-header-left">
+            <h1 className="editor-title">Scenario Configuration</h1>
+            <p className="editor-subtitle">Define logic flows and automated actions for multi-sensor events.</p>
+          </div>
+          <div className="editor-header-right">
+            <button className="btn-secondary">
+              <HistoryIcon />
+              <span>History</span>
+            </button>
+            <button className="btn-primary" onClick={saveScenario}>
+              <PlusIcon />
+              <span>Save Scenario</span>
+            </button>
           </div>
         </header>
 
-        {/* Main Configuration Section */}
-        <div className="config-section">
-          <div className="config-form-row">
-            <div className="config-form-left">
-              {/* Scenario Name */}
-              <div className="form-group">
-                <label className="form-label">Scenario Name</label>
+        {/* Scenario Details Card */}
+        <section className="scenario-details-card">
+          <div className="details-form">
+            <div className="form-group">
+              <label className="form-label">SCENARIO NAME</label>
+              <input
+                type="text"
+                className="form-input"
+                value={selectedScenario.name}
+                onChange={(e) => updateScenario('name', e.target.value)}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">DESCRIPTION</label>
+              <textarea
+                className="form-textarea"
+                value={selectedScenario.description}
+                onChange={(e) => updateScenario('description', e.target.value)}
+                rows={2}
+              />
+            </div>
+          </div>
+          <div className="details-status">
+            <div className="status-header">
+              <span className="status-title">Status</span>
+              <label className="toggle-switch">
                 <input
-                  type="text"
-                  className="form-input"
-                  placeholder="e.g., Critical Temperature Shutdown Protocol"
-                  value={scenarioName}
-                  onChange={(e) => setScenarioName(e.target.value)}
+                  type="checkbox"
+                  checked={selectedScenario.enabled}
+                  onChange={(e) => updateScenario('enabled', e.target.checked)}
                 />
-              </div>
-
-              {/* Description */}
-              <div className="form-group">
-                <label className="form-label">Description</label>
-                <textarea
-                  className="form-textarea"
-                  placeholder="Describe the purpose and expected outcome of this scenario..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows={3}
-                />
-              </div>
+                <span className="toggle-slider"></span>
+              </label>
             </div>
-
-            {/* Status Toggle */}
-            <div className="config-form-right">
-              <div className="status-section">
-                <div className="status-header">
-                  <span className="status-label">Status</span>
-                  <span className={`status-badge ${isActive ? 'status-badge--enabled' : 'status-badge--disabled'}`}>
-                    {isActive ? 'Enabled' : 'Disabled'}
-                  </span>
-                </div>
-                <div className="status-toggle-row">
-                  <label className="toggle-switch">
-                    <input
-                      type="checkbox"
-                      checked={isActive}
-                      onChange={(e) => setIsActive(e.target.checked)}
-                    />
-                    <span className="toggle-slider"></span>
-                  </label>
-                  <span className="toggle-label">Active Monitoring</span>
-                </div>
-                <p className="status-hint">
-                  When disabled, this logic will not trigger or execute regardless of sensor states.
-                </p>
-              </div>
+            <div className="status-info">
+              <span className="status-label-text">Active Evaluation</span>
+              <p className="status-description">System continuously checks conditions against real-time data.</p>
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* Logic Flow Builder */}
-        <div className="flow-builder-section">
-          <div className="flow-builder-header">
-            <div className="flow-builder-title">
+        {/* Logic Flow Section */}
+        <section className="logic-flow-section">
+          <div className="section-header">
+            <div className="section-title">
               <LightningIcon />
-              <span>Logic Flow Builder</span>
+              <span>LOGIC FLOW</span>
             </div>
-            <button className="add-condition-btn" onClick={addConditionGroup}>
-              <PlusIcon />
-              <span>Add Condition Group</span>
-            </button>
+            <div className="time-window">
+              <span className="time-window-label">Time Window</span>
+              <input
+                type="number"
+                className="time-window-input"
+                value={selectedScenario.timeWindow}
+                onChange={(e) => updateScenario('timeWindow', parseInt(e.target.value))}
+              />
+              <span className="time-window-unit">SECONDS</span>
+            </div>
           </div>
 
-          <div className="flow-builder-content">
+          <div className="logic-flow-content">
             {/* START Node */}
-            <div className="flow-start">
-              <button className="start-node">
-                <span className="start-arrow">▶</span>
-                <span>START</span>
-              </button>
+            <div className="start-node">
+              <span className="start-arrow">▶</span>
+              <span>START</span>
             </div>
 
-            {/* Connection Lines and Condition Groups */}
-            <div className="flow-conditions-wrapper">
-              <div className="flow-conditions">
-                {conditionGroups.map((group, groupIndex) => (
-                  <div key={group.id} className="condition-group-wrapper">
-                    {/* Connection line from start/previous */}
-                    {groupIndex === 0 && (
-                      <div className="connection-line connection-line--horizontal-start"></div>
-                    )}
+            {/* Connection line */}
+            <div className="flow-connector flow-connector--vertical"></div>
+
+            {/* Condition Group */}
+            <div className="condition-group">
+              <div className="condition-group-header">
+                <span>CONDITION GROUP 1</span>
+              </div>
+
+              {selectedScenario.conditions.map((condition, index) => (
+                <div key={condition.id}>
+                  <div className="condition-row">
+                    <div className="condition-number">{index + 1}</div>
                     
-                    {/* Condition Label */}
-                    <div className="condition-label">CONDITION {String.fromCharCode(65 + groupIndex)}</div>
-                    
-                    {/* Condition Card */}
-                    <div className="condition-card">
-                      <div className="condition-card-header">
-                        <div className="sensor-info">
-                          <span className="sensor-icon">{getSensorIcon(group.conditions[0].sensorType)}</span>
-                          <span className="sensor-name">{group.conditions[0].sensorName}</span>
-                        </div>
-                        <div className="condition-actions">
-                          <span className="logic-type">{group.logic}</span>
-                          <button 
-                            className="remove-condition-btn"
-                            onClick={() => removeConditionGroup(group.id)}
-                            title="Remove condition"
-                          >
-                            <TrashIcon />
-                          </button>
-                        </div>
-                      </div>
-                      <div className="condition-card-body">
-                        <select 
-                          className="condition-select"
-                          value={group.conditions[0].operator}
-                          onChange={(e) => updateCondition(group.id, group.conditions[0].id, 'operator', e.target.value)}
-                        >
-                          <option value="greater_than">Greater than</option>
-                          <option value="less_than">Less than</option>
-                          <option value="equals">Equals</option>
-                          <option value="not_equals">Not equals</option>
-                        </select>
-                        <input
-                          type="text"
-                          className="condition-value"
-                          value={group.conditions[0].value}
-                          onChange={(e) => updateCondition(group.id, group.conditions[0].id, 'value', e.target.value)}
-                        />
-                        <span className="condition-unit">{group.conditions[0].unit}</span>
-                      </div>
+                    <div className="condition-field">
+                      <label className="field-label">BASEBOARD</label>
+                      <select
+                        className="field-select"
+                        value={condition.baseboard}
+                        onChange={(e) => updateCondition(condition.id, 'baseboard', e.target.value)}
+                      >
+                        {baseboards.map(b => (
+                          <option key={b} value={b}>{b}</option>
+                        ))}
+                      </select>
                     </div>
 
-                    {/* Connection line to next/AND node */}
-                    <div className="connection-line connection-line--vertical"></div>
+                    <div className="condition-field">
+                      <label className="field-label">SENSOR</label>
+                      <select
+                        className="field-select"
+                        value={condition.sensor}
+                        onChange={(e) => updateCondition(condition.id, 'sensor', e.target.value)}
+                      >
+                        {sensors.map(s => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="condition-field">
+                      <label className="field-label">OPERATOR</label>
+                      <select
+                        className="field-select"
+                        value={condition.operator}
+                        onChange={(e) => updateCondition(condition.id, 'operator', e.target.value)}
+                      >
+                        {operators.map(o => (
+                          <option key={o} value={o}>{o}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="condition-field">
+                      <label className="field-label">{condition.operator.includes('Equal') ? 'VALUE' : 'THRESHOLD'}</label>
+                      <input
+                        type="text"
+                        className="field-input"
+                        value={condition.value}
+                        onChange={(e) => updateCondition(condition.id, 'value', e.target.value)}
+                        list={`values-${condition.id}`}
+                      />
+                      <datalist id={`values-${condition.id}`}>
+                        {presetValues.map(v => (
+                          <option key={v} value={v} />
+                        ))}
+                      </datalist>
+                    </div>
+
+                    <button 
+                      className="condition-delete"
+                      onClick={() => removeCondition(condition.id)}
+                      title="Delete condition"
+                    >
+                      <TrashIcon />
+                    </button>
                   </div>
-                ))}
-              </div>
 
-              {/* AND Node */}
-              {conditionGroups.length > 1 && (
-                <div className="logic-node-wrapper">
-                  <div className="logic-node">
-                    <span className="logic-connector">↓</span>
-                    <span className="logic-text">AND</span>
-                  </div>
+                  {index < selectedScenario.conditions.length - 1 && (
+                    <div className="condition-logic-separator">
+                      <span className="logic-badge">AND</span>
+                    </div>
+                  )}
                 </div>
-              )}
+              ))}
 
-              {/* Connection to Result */}
-              <div className="connection-line connection-line--to-result"></div>
-
-              {/* Logic Satisfied Result */}
-              <div className="result-node">
-                <div className="result-content">
-                  <span className="result-title">Logic Satisfied</span>
-                  <span className="result-subtitle">Applies action(s) to every satisfactory result.</span>
-                </div>
-              </div>
+              <button className="add-condition-btn" onClick={addCondition}>
+                <PlusIcon />
+                <span>Add Condition</span>
+              </button>
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* Action Definitions */}
-        <div className="actions-section">
-          <div className="actions-header">
-            <div className="actions-title">
+        {/* Actions Section */}
+        <section className="actions-section">
+          <div className="section-header">
+            <div className="section-title">
               <LightningIcon />
-              <span>Action Definitions</span>
-            </div>
-            <div className="action-tabs">
-              <button 
-                className={`action-tab ${activeActionTab === 'notify' ? 'action-tab--active' : ''}`}
-                onClick={() => setActiveActionTab('notify')}
-              >
-                <BellIcon />
-                <span>Notify</span>
-              </button>
-              <button 
-                className={`action-tab ${activeActionTab === 'actuator' ? 'action-tab--active' : ''}`}
-                onClick={() => setActiveActionTab('actuator')}
-              >
-                <SettingsIcon />
-                <span>Actuator</span>
-              </button>
-              <button 
-                className={`action-tab ${activeActionTab === 'webhook' ? 'action-tab--active' : ''}`}
-                onClick={() => setActiveActionTab('webhook')}
-              >
-                <WebhookIcon />
-                <span>Webhook</span>
-              </button>
+              <span>ACTIONS</span>
             </div>
           </div>
 
           <div className="actions-content">
-            {actions.filter(a => a.type === activeActionTab).map(action => (
-              <div key={action.id} className="action-card">
-                <div className="action-icon-wrapper action-icon--critical">
-                  <AlertTriangleIcon />
+            {/* Notify Stakeholders */}
+            <div className="action-card">
+              <div className="action-icon action-icon--notify">
+                <BellIcon />
+              </div>
+              <div className="action-details">
+                <div className="action-header">
+                  <h3 className="action-name">Notify Stakeholders</h3>
+                  <div className="action-toggle">
+                    <span className="toggle-label-text">{selectedScenario.actions.notify.enabled ? 'ENABLED' : 'DISABLED'}</span>
+                    <label className="toggle-switch toggle-switch--small">
+                      <input
+                        type="checkbox"
+                        checked={selectedScenario.actions.notify.enabled}
+                        onChange={(e) => updateAction('notify', 'enabled', e.target.checked)}
+                      />
+                      <span className="toggle-slider"></span>
+                    </label>
+                  </div>
                 </div>
-                <div className="action-info">
-                  <h4 className="action-name">{action.name}</h4>
-                  <p className="action-description">
-                    Send immediate push notification to <a href="#" className="action-link">@Admin Group</a>, and trigger email alert.
-                  </p>
-                  <span className={`priority-badge priority-badge--${action.priority}`}>
-                    {action.priority === 'high' ? 'High Priority' : action.priority === 'medium' ? 'Medium Priority' : 'Low Priority'}
-                  </span>
+                <div className="action-body">
+                  <div className="action-field">
+                    <label className="field-label">RECIPIENTS</label>
+                    <div className="recipients-list">
+                      {selectedScenario.actions.notify.recipients.map(recipient => (
+                        <span key={recipient} className="recipient-tag">
+                          <span>+ {recipient}</span>
+                          <button onClick={() => removeRecipient(recipient)}>×</button>
+                        </span>
+                      ))}
+                      <button 
+                        className="add-recipient-btn"
+                        onClick={() => {
+                          const recipient = prompt('Enter recipient name:');
+                          if (recipient) addRecipient(recipient);
+                        }}
+                      >
+                        + Add
+                      </button>
+                    </div>
+                  </div>
+                  <div className="action-field">
+                    <label className="field-label">MESSAGE TEMPLATE</label>
+                    <input
+                      type="text"
+                      className="field-input field-input--wide"
+                      value={selectedScenario.actions.notify.messageTemplate}
+                      onChange={(e) => updateAction('notify', 'messageTemplate', e.target.value)}
+                      placeholder="Enter message template..."
+                    />
+                  </div>
                 </div>
               </div>
-            ))}
+            </div>
 
-            {actions.filter(a => a.type === activeActionTab).length === 0 && (
-              <div className="no-actions">
-                <p>No {activeActionTab} actions configured. Click the + button to add one.</p>
+            {/* Trigger Webhook */}
+            <div className="action-card">
+              <div className="action-icon action-icon--webhook">
+                <WebhookIcon />
+              </div>
+              <div className="action-details">
+                <div className="action-header">
+                  <h3 className="action-name">Trigger Webhook</h3>
+                  <div className="action-toggle">
+                    <span className="toggle-label-text">{selectedScenario.actions.webhook.enabled ? 'ENABLED' : 'DISABLED'}</span>
+                    <label className="toggle-switch toggle-switch--small">
+                      <input
+                        type="checkbox"
+                        checked={selectedScenario.actions.webhook.enabled}
+                        onChange={(e) => updateAction('webhook', 'enabled', e.target.checked)}
+                      />
+                      <span className="toggle-slider"></span>
+                    </label>
+                  </div>
+                </div>
+                <div className="action-body">
+                  <div className="action-field">
+                    <label className="field-label">ENDPOINT URL</label>
+                    <input
+                      type="text"
+                      className="field-input field-input--wide"
+                      value={selectedScenario.actions.webhook.endpointUrl}
+                      onChange={(e) => updateAction('webhook', 'endpointUrl', e.target.value)}
+                      placeholder="https://api.example.com/webhook"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Footer */}
+        <footer className="editor-footer">
+          <button className="btn-delete" onClick={deleteScenario}>
+            <DeleteIcon />
+            <span>Delete Scenario</span>
+          </button>
+          <div className="footer-right">
+            {hasUnsavedChanges && (
+              <div className="unsaved-indicator">
+                <WarningIcon />
+                <span>Unsaved changes</span>
               </div>
             )}
+            <button className="btn-discard" onClick={discardChanges}>
+              Discard
+            </button>
+            <button className="btn-save" onClick={saveScenario}>
+              Save Scenario
+            </button>
           </div>
-        </div>
-      </div>
+        </footer>
+      </main>
     </div>
   );
 };

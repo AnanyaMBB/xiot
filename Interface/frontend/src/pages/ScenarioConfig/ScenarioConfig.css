@@ -2,6 +2,7 @@
 
 .scenario-config {
   display: flex;
+  min-height: 100%;
   height: 100%;
   width: 100%;
   background-color: #f5f6fa;

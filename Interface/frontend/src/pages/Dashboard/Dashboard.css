@@ -1,7 +1,7 @@
 /* Dashboard Page Styles */
 
 .dashboard {
-  min-height: 100vh;
+  min-height: 100%;
   background-color: var(--color-bg-tertiary);
 }
 
@@ -94,11 +94,12 @@
   gap: var(--spacing-md);
 }
 
-/* Main Content */
+/* Main Content - Side by side layout */
 .dashboard-content {
   display: grid;
-  grid-template-columns: 700px 1fr;
+  grid-template-columns: 400px 1fr;
   gap: var(--spacing-lg);
+  align-items: start;
 }
 
 /* Multimedia Panel */
@@ -341,6 +342,7 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: var(--spacing-md);
+  align-content: start;
 }
 
 /* Footer */
@@ -402,13 +404,9 @@
 }
 
 /* Responsive */
-@media (max-width: 1600px) {
-  .dashboard-content {
-    grid-template-columns: 1fr;
-  }
-  
+@media (max-width: 1400px) {
   .sensor-grid {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -417,12 +415,22 @@
     grid-template-columns: repeat(3, 1fr);
   }
   
+  .dashboard-content {
+    grid-template-columns: 350px 1fr;
+  }
+}
+
+@media (max-width: 1000px) {
+  .dashboard-content {
+    grid-template-columns: 1fr;
+  }
+  
   .sensor-grid {
     grid-template-columns: repeat(3, 1fr);
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 768px) {
   .status-cards-grid {
     grid-template-columns: repeat(2, 1fr);
   }

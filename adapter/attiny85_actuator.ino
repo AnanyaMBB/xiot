@@ -1,3 +1,18 @@
+/**
+ * ATtiny85 I2C Actuator Adapter
+ * 
+ * This program configures the ATtiny85 as an actuator node that:
+ * - Receives commands from master (Raspberry Pi) over I2C
+ * - Controls output pins based on received commands
+ * 
+ * I2C Address: 8 (configurable)
+ * 
+ * Commands:
+ *   0x00 - Turn output OFF
+ *   0x01 - Turn output ON
+ *   0x02 - Toggle output
+ */
+
 #include <TinyWireS.h>
 
 #define SLAVE_ADDR 8
@@ -7,22 +22,20 @@ const int latchPin = 1;   // PB1
 const int clockPin = 0;   // PB0 (shared with SDA - only used before I2C init)
 const int dataPin = 2;    // PB2 (shared with SCL - only used before I2C init)
 
-// Other pins
-const int sensorInput = A2;  // PB4
-const int ledPin = 3;        // PB3
+// Actuator output pin
+const int outputPin = 3;  // PB3
 
-// Global variables
-uint16_t sensorValue = 0;
-uint8_t ledState = LOW;
+// Output state
+uint8_t outputState = LOW;
 
-// Command handling - use 0xFF as "no command" since 0x00 is a valid command (LED OFF)
+// Command handling
 volatile uint8_t receivedCommand = 0xFF;
 volatile bool hasNewCommand = false;
 
-// LED Commands
-#define CMD_LED_OFF    0x00
-#define CMD_LED_ON     0x01
-#define CMD_LED_TOGGLE 0x02
+// Commands
+#define CMD_OFF    0x00
+#define CMD_ON     0x01
+#define CMD_TOGGLE 0x02
 
 void setup_shift_register(int config_bits) {
     digitalWrite(latchPin, LOW);
@@ -37,33 +50,21 @@ void setup() {
     pinMode(clockPin, OUTPUT);
     pinMode(dataPin, OUTPUT);
     
-    // Configure shift register (must happen before TinyWireS.begin())
-    // After this, PB0 and PB2 will be taken over by I2C
+    // Configure shift register for actuator mode
+    // Adjust config_bits based on your mux/actuator configuration
     setup_shift_register(B01100011);
     
-    // Configure other pins
-    pinMode(ledPin, OUTPUT);
-    pinMode(sensorInput, INPUT);
-    digitalWrite(ledPin, LOW);
-    
-    analogReference(DEFAULT);
+    // Configure output pin
+    pinMode(outputPin, OUTPUT);
+    digitalWrite(outputPin, LOW);
     
     // Initialize as I2C slave (takes over PB0=SDA, PB2=SCL)
     TinyWireS.begin(SLAVE_ADDR);
-    TinyWireS.onRequest(requestEvent);
     TinyWireS.onReceive(receiveEvent);
 }
 
 void loop() {
-    // Read sensor with averaging
-    sensorValue = 0;
-    for (int i = 0; i < 5; i++) {
-        sensorValue += analogRead(sensorInput);
-        delay(2);
-    }
-    sensorValue = sensorValue / 5;
-    
-    // Process any received commands (using flag instead of checking value)
+    // Process any received commands
     if (hasNewCommand) {
         processCommand(receivedCommand);
         hasNewCommand = false;
@@ -71,20 +72,14 @@ void loop() {
     
     // Required for TinyWireS to work properly
     TinyWireS_stop_check();
-    delay(50);
-}
-
-// I2C request handler - send sensor data (2 bytes, LSB first)
-void requestEvent() {
-    TinyWireS.write((uint8_t)(sensorValue & 0xFF));        // Low byte
-    TinyWireS.write((uint8_t)((sensorValue >> 8) & 0x03)); // High byte (2 bits)
+    delay(10);
 }
 
 // I2C receive handler - receive commands from master
 void receiveEvent(uint8_t numBytes) {
     if (numBytes > 0) {
         receivedCommand = TinyWireS.read();
-        hasNewCommand = true;  // Set flag so even 0x00 commands are processed
+        hasNewCommand = true;
     }
     // Drain any extra bytes
     while (TinyWireS.available()) {
@@ -95,17 +90,17 @@ void receiveEvent(uint8_t numBytes) {
 // Process received commands
 void processCommand(uint8_t cmd) {
     switch (cmd) {
-        case CMD_LED_OFF:
-            digitalWrite(ledPin, LOW);
-            ledState = LOW;
+        case CMD_OFF:
+            digitalWrite(outputPin, LOW);
+            outputState = LOW;
             break;
-        case CMD_LED_ON:
-            digitalWrite(ledPin, HIGH);
-            ledState = HIGH;
+        case CMD_ON:
+            digitalWrite(outputPin, HIGH);
+            outputState = HIGH;
             break;
-        case CMD_LED_TOGGLE:
-            ledState = !ledState;
-            digitalWrite(ledPin, ledState);
+        case CMD_TOGGLE:
+            outputState = !outputState;
+            digitalWrite(outputPin, outputState);
             break;
         default:
             // Unknown command, ignore

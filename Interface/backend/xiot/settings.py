@@ -24,6 +24,7 @@ ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -34,6 +35,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
+    'channels',
     # Local apps
     'api',
     'authentication',
@@ -68,6 +70,25 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'xiot.wsgi.application'
+ASGI_APPLICATION = 'xiot.asgi.application'
+
+# Channels Configuration
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer"
+        # For production, use Redis:
+        # "BACKEND": "channels_redis.core.RedisChannelLayer",
+        # "CONFIG": {
+        #     "hosts": [("127.0.0.1", 6379)],
+        # },
+    },
+}
+
+# MQTT Configuration
+MQTT_BROKER = "aalsdb.kaist.ac.kr"
+MQTT_PORT = 1883
+MQTT_USERNAME = None
+MQTT_PASSWORD = None
 
 
 # Database
@@ -139,6 +160,10 @@ CORS_ALLOWED_ORIGINS = [
     'http://127.0.0.1:5173',
     'http://localhost:5174',
     'http://127.0.0.1:5174',
+    'http://localhost:5175',
+    'http://127.0.0.1:5175',
+    'http://localhost:5176',
+    'http://127.0.0.1:5176',
 ]
 
 CORS_ALLOW_CREDENTIALS = True

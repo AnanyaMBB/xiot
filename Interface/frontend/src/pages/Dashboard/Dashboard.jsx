@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import StatusCard from '../../components/StatusCard/StatusCard';
 import SensorCard from '../../components/SensorCard/SensorCard';
 import Button from '../../components/Button/Button';
+import { useSensorData } from '../../hooks/useSensorData';
 import './Dashboard.css';
 
 // Icons
@@ -131,26 +132,32 @@ const mockSensors = [
 ];
 
 const Dashboard = () => {
-  const [selectedBaseboard, setSelectedBaseboard] = useState('MKR-1000-MAIN');
-  const [sensors, setSensors] = useState(mockSensors);
+  const [selectedBaseboard, setSelectedBaseboard] = useState('PI-001');
   const [displayMessage, setDisplayMessage] = useState('');
-
-  // Simulate real-time updates
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setSensors(prev => prev.map(sensor => {
-        if (sensor.status === 'offline') return sensor;
-        const variation = (Math.random() - 0.5) * 0.2;
-        const newValue = parseFloat(sensor.value) + variation;
-        return {
-          ...sensor,
-          value: newValue.toFixed(1),
-        };
+  
+  // Real-time sensor data from WebSocket
+  const { sensors: liveSensors, isConnected, connectionStatus, lastUpdate } = useSensorData();
+  
+  // Merge live sensor data with mock data for offline sensors
+  const sensors = useMemo(() => {
+    if (liveSensors.length > 0) {
+      // Transform live sensor data to match component format
+      return liveSensors.map((sensor, index) => ({
+        id: index + 1,
+        name: sensor.name,
+        adapterId: `ADPT (${sensor.i2c_address})`,
+        value: sensor.value !== null ? sensor.value.toString() : '--',
+        unit: sensor.unit || '',
+        status: sensor.status === 'active' ? 'active' : 
+                sensor.status === 'offline' ? 'offline' : 'warning',
+        timestamp: new Date(sensor.lastUpdate).toLocaleTimeString(),
+        rateOfChange: '',
+        sparklineData: '0,15 25,18 50,16 75,19 100,17',
       }));
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, []);
+    }
+    // Fall back to mock data if no live sensors
+    return mockSensors;
+  }, [liveSensors]);
 
   const handleSendDisplay = () => {
     console.log('Sending to display:', displayMessage);
@@ -179,11 +186,11 @@ const Dashboard = () => {
         {/* Status Cards */}
         <div className="status-cards-grid">
           <StatusCard
-            title="MQTT Status"
-            value="Connected"
+            title="WebSocket"
+            value={isConnected ? "Connected" : "Disconnected"}
             icon={<WifiIcon />}
-            status="success"
-            badge={{ text: '12ms', variant: 'success' }}
+            status={isConnected ? "success" : "error"}
+            badge={{ text: isConnected ? 'Live' : 'Offline', variant: isConnected ? 'success' : 'error' }}
           />
           <StatusCard
             title="I2C Bus"
@@ -199,8 +206,8 @@ const Dashboard = () => {
           />
           <StatusCard
             title="Sensors"
-            value="12"
-            subtitle="streaming"
+            value={liveSensors.length > 0 ? liveSensors.length.toString() : "0"}
+            subtitle={isConnected ? "streaming" : "waiting"}
             icon={<ActivityIcon />}
           />
           <StatusCard
@@ -305,8 +312,10 @@ const Dashboard = () => {
         <footer className="dashboard-footer">
           <div className="footer-left">
             <RefreshIcon />
-            <span className="footer-text">System Sync:</span>
-            <span className="footer-value">Active (12ms latency)</span>
+            <span className="footer-text">Last Update:</span>
+            <span className="footer-value">
+              {lastUpdate ? new Date(lastUpdate).toLocaleTimeString() : 'Waiting for data...'}
+            </span>
           </div>
           <div className="footer-right">
             <div className="footer-status">

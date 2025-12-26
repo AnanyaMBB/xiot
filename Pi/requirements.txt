@@ -1,4 +1,19 @@
 # XIOT Pi Requirements
+
+# I2C Communication
 smbus2>=0.4.0
+
+# MQTT Client
 paho-mqtt>=2.0.0
 
+# Web Server (for multimedia streaming)
+aiohttp>=3.9.0
+
+# LCD Display
+Pillow>=10.0.0
+numpy>=1.24.0
+spidev>=3.6        # Pi-only, SPI interface
+gpiozero>=2.0      # Pi-only, GPIO control
+
+# Note: On Raspberry Pi, also ensure these system packages:
+#   sudo apt install ffmpeg libcamera-apps

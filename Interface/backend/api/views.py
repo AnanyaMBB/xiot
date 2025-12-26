@@ -1,11 +1,17 @@
+import json
+from datetime import timedelta
+import paho.mqtt.publish as mqtt_publish
+from django.conf import settings
+from django.utils import timezone
 from rest_framework import viewsets, generics, status
+from rest_framework.decorators import action
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from .models import Baseboard, Sensor, Actuator, Event
 from .serializers import (
     BaseboardSerializer, BaseboardListSerializer,
-    SensorSerializer, ActuatorSerializer, EventSerializer
+    SensorSerializer, SensorReadingSerializer, ActuatorSerializer, EventSerializer
 )
 
 
@@ -32,6 +38,61 @@ class SensorViewSet(viewsets.ModelViewSet):
         if baseboard_id:
             queryset = queryset.filter(baseboard_id=baseboard_id)
         return queryset
+
+    @action(detail=True, methods=['get'])
+    def readings(self, request, pk=None):
+        """Get historical readings for a sensor."""
+        sensor = self.get_object()
+        
+        # Time range filter
+        time_range = request.query_params.get('range', '24h')
+        now = timezone.now()
+        
+        if time_range == '1h':
+            start_time = now - timedelta(hours=1)
+        elif time_range == '6h':
+            start_time = now - timedelta(hours=6)
+        elif time_range == '24h':
+            start_time = now - timedelta(hours=24)
+        elif time_range == '7d':
+            start_time = now - timedelta(days=7)
+        elif time_range == '30d':
+            start_time = now - timedelta(days=30)
+        else:
+            start_time = now - timedelta(hours=24)
+        
+        readings = sensor.readings.filter(timestamp__gte=start_time).order_by('timestamp')
+        
+        # Limit to 500 data points for performance
+        total = readings.count()
+        if total > 500:
+            step = total // 500
+            readings = readings[::step][:500]
+        
+        serializer = SensorReadingSerializer(readings, many=True)
+        
+        # Calculate statistics
+        values = [r.value for r in readings]
+        stats = {
+            'count': len(values),
+            'min': min(values) if values else None,
+            'max': max(values) if values else None,
+            'avg': sum(values) / len(values) if values else None,
+            'current': sensor.current_value,
+        }
+        
+        return Response({
+            'sensor': {
+                'id': sensor.id,
+                'name': sensor.name,
+                'type': sensor.sensor_type,
+                'unit': sensor.unit,
+                'status': sensor.status,
+            },
+            'readings': serializer.data,
+            'statistics': stats,
+            'time_range': time_range,
+        })
 
 
 class ActuatorViewSet(viewsets.ModelViewSet):
@@ -87,3 +148,62 @@ class SystemStatusView(APIView):
             'gateway': 'online',
             'database': 'connected',
         })
+
+
+class LCDCommandView(APIView):
+    """Send commands to LCD display via MQTT."""
+    permission_classes = [AllowAny]  # Allow unauthenticated for now
+
+    def post(self, request):
+        text = request.data.get('text', '')
+        color = request.data.get('color', 'WHITE')
+        alarm = request.data.get('alarm', False)
+
+        if not text:
+            return Response(
+                {'error': 'Text is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Valid colors
+        valid_colors = ['WHITE', 'BLACK', 'RED', 'GREEN', 'BLUE', 'YELLOW', 'CYAN', 'MAGENTA']
+        if color.upper() not in valid_colors:
+            color = 'WHITE'
+
+        payload = json.dumps({
+            'text': text,
+            'color': color.upper(),
+            'alarm': bool(alarm)
+        })
+
+        try:
+            mqtt_broker = getattr(settings, 'MQTT_BROKER', 'localhost')
+            mqtt_port = getattr(settings, 'MQTT_PORT', 1883)
+            
+            mqtt_publish.single(
+                topic='lcd/display',
+                payload=payload,
+                hostname=mqtt_broker,
+                port=mqtt_port
+            )
+
+            # Log the event
+            Event.objects.create(
+                source='interface',
+                event_type='lcd_command',
+                message=f"LCD: {text[:50]}{'...' if len(text) > 50 else ''}",
+                severity='info'
+            )
+
+            return Response({
+                'status': 'sent',
+                'text': text,
+                'color': color.upper(),
+                'alarm': alarm
+            })
+
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

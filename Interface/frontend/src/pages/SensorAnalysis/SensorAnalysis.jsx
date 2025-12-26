@@ -1,9 +1,18 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import StatusCard from '../../components/StatusCard/StatusCard';
 import Button from '../../components/Button/Button';
+import { apiService } from '../../services/api';
 import './SensorAnalysis.css';
 
 // Icons
+const BackIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <line x1="19" y1="12" x2="5" y2="12" />
+    <polyline points="12 19 5 12 12 5" />
+  </svg>
+);
+
 const TrendingUpIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
@@ -33,34 +42,122 @@ const DownloadIcon = () => (
   </svg>
 );
 
-const ChevronDownIcon = () => (
+const RefreshIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <polyline points="6 9 12 15 18 9" />
+    <polyline points="23 4 23 10 17 10" />
+    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
   </svg>
 );
 
-// Mock sensor data for the chart
-const mockChartData = {
-  labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '24:00'],
-  datasets: [
-    { name: 'Temp Sensor A', color: '#3b82f6', data: [22.5, 21.8, 23.2, 25.1, 24.8, 23.5, 22.9] },
-    { name: 'Humidity B', color: '#10b981', data: [58, 62, 55, 52, 54, 58, 60] },
-    { name: 'Pressure C', color: '#f59e0b', data: [1013, 1012, 1015, 1018, 1016, 1014, 1013] },
-  ],
-};
-
-const mockSensorList = [
-  { id: 1, name: 'Temp Sensor A', type: 'Temperature', current: '24.5°C', min: '21.2°C', max: '26.8°C', avg: '23.9°C', status: 'normal' },
-  { id: 2, name: 'Humidity B', type: 'Humidity', current: '58.2%', min: '48.5%', max: '68.3%', avg: '55.1%', status: 'normal' },
-  { id: 3, name: 'Pressure C', type: 'Pressure', current: '1013hPa', min: '1008hPa', max: '1022hPa', avg: '1015hPa', status: 'warning' },
-  { id: 4, name: 'Vibration D', type: 'Vibration', current: '2.45g', min: '0.12g', max: '3.82g', avg: '1.24g', status: 'critical' },
-  { id: 5, name: 'Light Level', type: 'Light', current: '450Lux', min: '85Lux', max: '1250Lux', avg: '420Lux', status: 'normal' },
-];
-
 const SensorAnalysis = () => {
-  const [selectedSensor, setSelectedSensor] = useState('all');
+  const location = useLocation();
+  const navigate = useNavigate();
+  const sensorFromState = location.state?.sensor;
+
+  const [sensor, setSensor] = useState(sensorFromState || null);
+  const [readings, setReadings] = useState([]);
+  const [statistics, setStatistics] = useState(null);
   const [timeRange, setTimeRange] = useState('24h');
-  const [selectedSensors, setSelectedSensors] = useState(['Temp Sensor A']);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [lastRefresh, setLastRefresh] = useState(null);
+
+  const fetchSensorData = useCallback(async () => {
+    // Only fetch if we have a valid numeric sensor ID
+    const sensorId = sensor?.id;
+    if (!sensorId || typeof sensorId !== 'number') {
+      console.log('[SensorAnalysis] No valid sensor ID, skipping fetch');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await apiService.getSensorReadings(sensorId, { range: timeRange });
+      setReadings(response.data.readings || []);
+      setStatistics(response.data.statistics || {});
+      setLastRefresh(new Date());
+      setError(null);
+    } catch (err) {
+      console.error('Failed to fetch sensor readings:', err);
+      // Don't show error if it's just a 404 (sensor not found in DB yet)
+      if (err.response?.status === 404) {
+        setReadings([]);
+        setStatistics({ current: sensor?.value, min: null, max: null, avg: null, count: 0 });
+      } else {
+        setError('Failed to load sensor data');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [sensor?.id, sensor?.value, timeRange]);
+
+  useEffect(() => {
+    const sensorId = sensor?.id;
+    if (sensorId && typeof sensorId === 'number') {
+      fetchSensorData();
+    }
+  }, [fetchSensorData, sensor?.id]);
+
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    const sensorId = sensor?.id;
+    if (!sensorId || typeof sensorId !== 'number') return;
+    
+    const interval = setInterval(fetchSensorData, 30000);
+    return () => clearInterval(interval);
+  }, [fetchSensorData, sensor?.id]);
+
+  const handleBack = () => {
+    navigate(-1);
+  };
+
+  const generateChartPoints = () => {
+    if (!readings.length) return '';
+    
+    const width = 800;
+    const height = 250;
+    const padding = 20;
+    
+    const values = readings.map(r => r.value);
+    const minVal = Math.min(...values);
+    const maxVal = Math.max(...values);
+    const range = maxVal - minVal || 1;
+    
+    return readings.map((reading, index) => {
+      const x = padding + (index / (readings.length - 1)) * (width - 2 * padding);
+      const y = height - padding - ((reading.value - minVal) / range) * (height - 2 * padding);
+      return `${x},${y}`;
+    }).join(' ');
+  };
+
+  const formatTime = (timestamp) => {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const getTimeLabels = () => {
+    if (!readings.length) return [];
+    const step = Math.floor(readings.length / 6) || 1;
+    return readings.filter((_, i) => i % step === 0).slice(0, 7).map(r => formatTime(r.timestamp));
+  };
+
+  // If no sensor is provided, show a message to select one
+  if (!sensor) {
+    return (
+      <div className="sensor-analysis">
+        <div className="analysis-container">
+          <div className="no-sensor-state">
+            <ActivityIcon />
+            <h2>No Sensor Selected</h2>
+            <p>Click on a sensor card from the Dashboard to view its analysis.</p>
+            <Button variant="primary" onClick={() => navigate('/')}>
+              Go to Dashboard
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="sensor-analysis">
@@ -68,8 +165,19 @@ const SensorAnalysis = () => {
         {/* Header */}
         <header className="analysis-header">
           <div className="analysis-header-left">
-            <h1 className="analysis-title">Sensor Analysis</h1>
-            <p className="analysis-subtitle">Historical data visualization and statistics</p>
+            <Button variant="ghost" icon={<BackIcon />} onClick={handleBack} className="back-btn">
+              Back
+            </Button>
+            <div className="sensor-title-section">
+              <h1 className="analysis-title">{sensor.name}</h1>
+              <div className="sensor-meta">
+                <span className="sensor-type-badge">{sensor.sensorType || 'Sensor'}</span>
+                <span className="sensor-id">{sensor.adapterId}</span>
+                {sensor.baseboard && (
+                  <span className="sensor-baseboard">on {sensor.baseboard}</span>
+                )}
+              </div>
+            </div>
           </div>
           <div className="analysis-header-right">
             <div className="time-range-selector">
@@ -83,37 +191,47 @@ const SensorAnalysis = () => {
                 </button>
               ))}
             </div>
+            <Button variant="secondary" icon={<RefreshIcon />} onClick={fetchSensorData} disabled={loading}>
+              {loading ? 'Loading...' : 'Refresh'}
+            </Button>
             <Button variant="secondary" icon={<DownloadIcon />}>
               Export
             </Button>
           </div>
         </header>
 
+        {error && (
+          <div className="error-banner">
+            {error}
+            <button onClick={fetchSensorData}>Retry</button>
+          </div>
+        )}
+
         {/* Stats Cards */}
         <div className="stats-grid">
           <StatusCard
-            title="Active Sensors"
-            value="12"
-            subtitle="streaming"
+            title="Current Value"
+            value={statistics?.current != null ? `${statistics.current}` : (sensor.value || '--')}
+            subtitle={sensor.unit || ''}
             icon={<ActivityIcon />}
+            status={sensor.status === 'active' ? 'success' : sensor.status === 'warning' ? 'warning' : 'default'}
           />
           <StatusCard
-            title="Data Points"
-            value="1.2M"
-            subtitle="last 24h"
+            title="Minimum"
+            value={statistics?.min != null ? statistics.min.toFixed(2) : '--'}
+            subtitle={sensor.unit || ''}
             icon={<TrendingUpIcon />}
           />
           <StatusCard
-            title="Anomalies"
-            value="3"
-            subtitle="detected"
-            icon={<AlertIcon />}
-            status="warning"
+            title="Maximum"
+            value={statistics?.max != null ? statistics.max.toFixed(2) : '--'}
+            subtitle={sensor.unit || ''}
+            icon={<TrendingUpIcon />}
           />
           <StatusCard
-            title="Avg. Sample Rate"
-            value="250"
-            subtitle="ms"
+            title="Average"
+            value={statistics?.avg != null ? statistics.avg.toFixed(2) : '--'}
+            subtitle={sensor.unit || ''}
             icon={<ActivityIcon />}
           />
         </div>
@@ -125,110 +243,142 @@ const SensorAnalysis = () => {
             <div className="chart-header">
               <div className="chart-title">
                 <h2>Time Series Data</h2>
-                <span className="chart-subtitle">Sensor readings over time</span>
+                <span className="chart-subtitle">
+                  {readings.length} readings in the last {timeRange}
+                </span>
               </div>
-              <div className="chart-controls">
-                <div className="sensor-selector">
-                  <button className="selector-btn">
-                    <span>Select Sensors</span>
-                    <ChevronDownIcon />
-                  </button>
-                </div>
+              <div className="chart-current-value">
+                <span className="current-label">Current:</span>
+                <span className="current-value">
+                  {sensor.value || statistics?.current || '--'} {sensor.unit}
+                </span>
               </div>
             </div>
 
             <div className="chart-area">
-              {/* Simplified chart representation */}
-              <div className="chart-placeholder">
-                <svg viewBox="0 0 800 300" preserveAspectRatio="none" className="chart-svg">
-                  {/* Grid lines */}
-                  <defs>
-                    <pattern id="grid" width="100" height="50" patternUnits="userSpaceOnUse">
-                      <path d="M 100 0 L 0 0 0 50" fill="none" stroke="#e2e8f0" strokeWidth="1"/>
-                    </pattern>
-                  </defs>
-                  <rect width="800" height="300" fill="url(#grid)" />
-                  
-                  {/* Temperature line */}
-                  <polyline
-                    fill="none"
-                    stroke="#3b82f6"
-                    strokeWidth="2"
-                    points="0,150 100,160 200,140 300,100 400,110 500,130 600,145 700,140 800,145"
-                  />
-                  
-                  {/* Humidity line */}
-                  <polyline
-                    fill="none"
-                    stroke="#10b981"
-                    strokeWidth="2"
-                    points="0,120 100,100 200,140 300,160 400,150 500,120 600,110 700,115 800,120"
-                  />
-                  
-                  {/* Threshold line */}
-                  <line x1="0" y1="80" x2="800" y2="80" stroke="#ef4444" strokeWidth="1" strokeDasharray="5,5" />
-                </svg>
+              {readings.length > 0 ? (
+                <div className="chart-wrapper">
+                  <svg viewBox="0 0 800 280" preserveAspectRatio="none" className="chart-svg">
+                    {/* Grid lines */}
+                    <defs>
+                      <pattern id="grid" width="100" height="50" patternUnits="userSpaceOnUse">
+                        <path d="M 100 0 L 0 0 0 50" fill="none" stroke="var(--color-border-light)" strokeWidth="1"/>
+                      </pattern>
+                      <linearGradient id="chartGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stopColor="var(--color-primary)" stopOpacity="0.3"/>
+                        <stop offset="100%" stopColor="var(--color-primary)" stopOpacity="0"/>
+                      </linearGradient>
+                    </defs>
+                    <rect x="20" y="20" width="760" height="210" fill="url(#grid)" />
+                    
+                    {/* Area fill */}
+                    <polygon
+                      fill="url(#chartGradient)"
+                      points={`20,230 ${generateChartPoints()} 780,230`}
+                    />
+                    
+                    {/* Main line */}
+                    <polyline
+                      fill="none"
+                      stroke="var(--color-primary)"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      points={generateChartPoints()}
+                    />
+                    
+                    {/* Min threshold line */}
+                    {statistics?.min !== null && (
+                      <line 
+                        x1="20" 
+                        y1="210" 
+                        x2="780" 
+                        y2="210" 
+                        stroke="var(--color-success)" 
+                        strokeWidth="1" 
+                        strokeDasharray="5,5" 
+                      />
+                    )}
+                    
+                    {/* Max threshold line */}
+                    {statistics?.max !== null && (
+                      <line 
+                        x1="20" 
+                        y1="40" 
+                        x2="780" 
+                        y2="40" 
+                        stroke="var(--color-error)" 
+                        strokeWidth="1" 
+                        strokeDasharray="5,5" 
+                      />
+                    )}
+                  </svg>
 
-                <div className="chart-legend">
-                  <div className="legend-item">
-                    <span className="legend-color" style={{ backgroundColor: '#3b82f6' }}></span>
-                    <span>Temperature</span>
-                  </div>
-                  <div className="legend-item">
-                    <span className="legend-color" style={{ backgroundColor: '#10b981' }}></span>
-                    <span>Humidity</span>
-                  </div>
-                  <div className="legend-item legend-item--dashed">
-                    <span className="legend-line"></span>
-                    <span>Threshold</span>
+                  <div className="chart-legend">
+                    <div className="legend-item">
+                      <span className="legend-color" style={{ backgroundColor: 'var(--color-primary)' }}></span>
+                      <span>{sensor.name}</span>
+                    </div>
+                    {statistics?.min != null && (
+                      <div className="legend-item legend-item--dashed legend-item--min">
+                        <span className="legend-line"></span>
+                        <span>Min: {statistics.min.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {statistics?.max != null && (
+                      <div className="legend-item legend-item--dashed legend-item--max">
+                        <span className="legend-line"></span>
+                        <span>Max: {statistics.max.toFixed(2)}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="chart-placeholder">
+                  <div className="no-data-message">
+                    <AlertIcon />
+                    <p>No readings available for this time range</p>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="chart-x-axis">
-              <span>00:00</span>
-              <span>04:00</span>
-              <span>08:00</span>
-              <span>12:00</span>
-              <span>16:00</span>
-              <span>20:00</span>
-              <span>Now</span>
+              {getTimeLabels().map((label, i) => (
+                <span key={i}>{label}</span>
+              ))}
             </div>
           </div>
 
-          {/* Sensor Statistics Table */}
-          <div className="stats-panel">
+          {/* Recent Readings Table */}
+          <div className="readings-panel">
             <div className="panel-header">
-              <h2>Sensor Statistics</h2>
-              <span className="panel-subtitle">Summary for selected time range</span>
+              <h2>Recent Readings</h2>
+              <span className="panel-subtitle">Last {Math.min(readings.length, 20)} entries</span>
             </div>
 
-            <div className="stats-table">
+            <div className="readings-table">
               <div className="table-header">
-                <span>Sensor</span>
-                <span>Current</span>
-                <span>Min</span>
-                <span>Max</span>
-                <span>Avg</span>
-                <span>Status</span>
+                <span>Timestamp</span>
+                <span>Value</span>
               </div>
               
-              {mockSensorList.map((sensor) => (
-                <div key={sensor.id} className={`table-row table-row--${sensor.status}`}>
-                  <div className="sensor-info">
-                    <span className="sensor-name">{sensor.name}</span>
-                    <span className="sensor-type">{sensor.type}</span>
-                  </div>
-                  <span className="stat-value stat-value--current">{sensor.current}</span>
-                  <span className="stat-value">{sensor.min}</span>
-                  <span className="stat-value">{sensor.max}</span>
-                  <span className="stat-value">{sensor.avg}</span>
-                  <span className={`status-badge status-badge--${sensor.status}`}>
-                    {sensor.status}
+              {readings.slice(-20).reverse().map((reading, index) => (
+                <div key={index} className="table-row">
+                  <span className="reading-time">
+                    {new Date(reading.timestamp).toLocaleString()}
+                  </span>
+                  <span className="reading-value">
+                    {reading.value} {sensor.unit}
                   </span>
                 </div>
               ))}
+
+              {readings.length === 0 && (
+                <div className="no-readings">
+                  No readings available
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -237,10 +387,14 @@ const SensorAnalysis = () => {
         <footer className="analysis-footer">
           <div className="footer-left">
             <span className="footer-text">Data refreshed:</span>
-            <span className="footer-value">2 seconds ago</span>
+            <span className="footer-value">
+              {lastRefresh ? `${Math.floor((Date.now() - lastRefresh) / 1000)}s ago` : 'Never'}
+            </span>
           </div>
           <div className="footer-right">
-            <span className="footer-info">Showing {mockSensorList.length} sensors</span>
+            <span className="footer-info">
+              {readings.length} data points in {timeRange}
+            </span>
           </div>
         </footer>
       </div>

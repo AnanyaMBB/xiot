@@ -1,9 +1,13 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import StatusCard from '../../components/StatusCard/StatusCard';
 import SensorCard from '../../components/SensorCard/SensorCard';
 import Button from '../../components/Button/Button';
 import { useSensorData } from '../../hooks/useSensorData';
+import { usePiMultimedia } from '../../hooks/usePiMultimedia';
 import './Dashboard.css';
+
+// Pi server URL - change this to your Pi's IP address
+const PI_SERVER_URL = import.meta.env.VITE_PI_SERVER_URL || 'http://192.168.137.110:8080';
 
 // Icons
 const WifiIcon = () => (
@@ -134,34 +138,136 @@ const mockSensors = [
 const Dashboard = () => {
   const [selectedBaseboard, setSelectedBaseboard] = useState('PI-001');
   const [displayMessage, setDisplayMessage] = useState('');
+  const [displayColor, setDisplayColor] = useState('#ffffff');
+  const [displayAlarm, setDisplayAlarm] = useState(false);
+  const [lcdStatus, setLcdStatus] = useState('');
+  const [isListening, setIsListening] = useState(false);
   
-  // Real-time sensor data from WebSocket
+  // Video element ref
+  const videoRef = useRef(null);
+  const audioRef = useRef(null);
+  
+  // Real-time sensor data from WebSocket (hook handles offline timeout)
   const { sensors: liveSensors, isConnected, connectionStatus, lastUpdate } = useSensorData();
   
-  // Merge live sensor data with mock data for offline sensors
+  // Pi multimedia features
+  const {
+    isConnected: isPiConnected,
+    videoUrl,
+    isVideoPlaying,
+    startVideo,
+    stopVideo,
+    isAudioPlaying,
+    startAudio,
+    stopAudio,
+    isPushToTalkActive,
+    startPushToTalk,
+    stopPushToTalk,
+    sendLcdCommand,
+    error: piError
+  } = usePiMultimedia(PI_SERVER_URL);
+  
+  // Track if we've ever received live data (don't show mock data after that)
+  const hasReceivedLiveData = lastUpdate !== null;
+  
+  // Transform live sensors for display
   const sensors = useMemo(() => {
-    if (liveSensors.length > 0) {
-      // Transform live sensor data to match component format
+    // If connected or have received live data, only show live sensors (even if empty)
+    if (hasReceivedLiveData || isConnected) {
       return liveSensors.map((sensor, index) => ({
         id: index + 1,
         name: sensor.name,
         adapterId: `ADPT (${sensor.i2c_address})`,
         value: sensor.value !== null ? sensor.value.toString() : '--',
         unit: sensor.unit || '',
-        status: sensor.status === 'active' ? 'active' : 
-                sensor.status === 'offline' ? 'offline' : 'warning',
+        status: sensor.value === null ? 'offline' :
+                sensor.status === 'active' ? 'active' : 'warning',
         timestamp: new Date(sensor.lastUpdate).toLocaleTimeString(),
         rateOfChange: '',
         sparklineData: '0,15 25,18 50,16 75,19 100,17',
       }));
     }
-    // Fall back to mock data if no live sensors
+    // Only show mock data if never connected
     return mockSensors;
-  }, [liveSensors]);
+  }, [liveSensors, hasReceivedLiveData, isConnected]);
 
-  const handleSendDisplay = () => {
-    console.log('Sending to display:', displayMessage);
-    setDisplayMessage('');
+  // Convert hex color to color name for LCD
+  const hexToColorName = (hex) => {
+    const colors = {
+      '#ffffff': 'WHITE',
+      '#000000': 'BLACK',
+      '#ff0000': 'RED',
+      '#00ff00': 'GREEN',
+      '#0000ff': 'BLUE',
+      '#ffff00': 'YELLOW',
+      '#00ffff': 'CYAN',
+      '#ff00ff': 'MAGENTA',
+    };
+    return colors[hex.toLowerCase()] || 'WHITE';
+  };
+
+  // Handle sending LCD command
+  const handleSendDisplay = async () => {
+    if (!displayMessage.trim()) return;
+    
+    setLcdStatus('Sending...');
+    const colorName = hexToColorName(displayColor);
+    
+    try {
+      const response = await fetch('http://localhost:8000/api/lcd/command/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: displayMessage,
+          color: colorName,
+          alarm: displayAlarm
+        })
+      });
+      
+      if (response.ok) {
+        setLcdStatus('✓ Sent');
+        setDisplayMessage('');
+        setTimeout(() => setLcdStatus(''), 3000);
+      } else {
+        setLcdStatus('✗ Failed');
+      }
+    } catch (err) {
+      console.error('LCD command error:', err);
+      setLcdStatus('✗ Error');
+    }
+  };
+
+  // Toggle audio listening
+  const toggleListening = () => {
+    if (isListening) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = '';
+      }
+      setIsListening(false);
+    } else {
+      if (!isPiConnected) {
+        console.log('[Audio] Pi not connected, cannot start audio');
+        return;
+      }
+      if (audioRef.current) {
+        audioRef.current.src = `${PI_SERVER_URL}/audio`;
+        audioRef.current.play().catch(err => {
+          console.log('[Audio] Playback failed:', err.message);
+          setIsListening(false);
+        });
+      }
+      setIsListening(true);
+    }
+  };
+
+  // Handle push-to-talk (mouse/touch events)
+  const handlePushToTalkStart = async () => {
+    await startPushToTalk();
+  };
+
+  const handlePushToTalkEnd = () => {
+    stopPushToTalk();
   };
 
   return (
@@ -226,52 +332,97 @@ const Dashboard = () => {
                 <span className="panel-icon">📹</span>
                 <span>Multimedia Feed</span>
               </div>
-              <span className="live-badge">
+              <span className={`live-badge ${isPiConnected ? '' : 'offline'}`}>
                 <span className="live-dot" />
-                Live
+                {isPiConnected ? 'Live' : 'Offline'}
               </span>
             </div>
             
+            {/* Video Feed */}
             <div className="video-container">
-              <div className="video-placeholder">
-                <div className="video-play-button">
-                  <svg width="60" height="60" viewBox="0 0 24 24" fill="currentColor">
-                    <polygon points="5 3 19 12 5 21 5 3" />
-                  </svg>
+              {isPiConnected ? (
+                <img 
+                  ref={videoRef}
+                  src={`${PI_SERVER_URL}/video`}
+                  alt="Live Video Feed"
+                  className="video-feed"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                  }}
+                />
+              ) : (
+                <div className="video-placeholder">
+                  <div className="video-play-button">
+                    <svg width="60" height="60" viewBox="0 0 24 24" fill="currentColor">
+                      <polygon points="5 3 19 12 5 21 5 3" />
+                    </svg>
+                  </div>
+                  <p style={{ marginTop: '10px', opacity: 0.7 }}>
+                    Configure PI_SERVER_URL to connect
+                  </p>
                 </div>
-              </div>
-              <span className="rec-indicator">
-                <span className="rec-dot" />
-                REC
-              </span>
+              )}
+              {isPiConnected && (
+                <span className="rec-indicator">
+                  <span className="rec-dot" />
+                  REC
+                </span>
+              )}
             </div>
 
+            {/* Audio element for listening to Pi */}
+            <audio ref={audioRef} style={{ display: 'none' }} />
+
+            {/* Audio Controls */}
             <div className="video-controls">
-              <button className="control-btn">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                  <polygon points="5 3 19 12 5 21 5 3" />
-                </svg>
+              {/* Listen to Pi Audio */}
+              <button 
+                className={`control-btn ${isListening ? 'active' : ''}`}
+                onClick={toggleListening}
+                title={isListening ? 'Stop Listening' : 'Listen to Pi Audio'}
+              >
+                {isListening ? (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <rect x="6" y="4" width="4" height="16" />
+                    <rect x="14" y="4" width="4" height="16" />
+                  </svg>
+                ) : (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <polygon points="5 3 19 12 5 21 5 3" />
+                  </svg>
+                )}
               </button>
-              <div className="volume-slider">
-                <div className="volume-track">
-                  <div className="volume-fill" style={{ width: '66%' }} />
-                </div>
-              </div>
+              
+              <span className="audio-status">
+                {isListening ? '🔊 Listening' : '🔇 Muted'}
+              </span>
+              
               <span className="latency-info">
                 <span className="latency-icon">📶</span>
-                32ms latency
+                {isPiConnected ? 'Connected' : 'Disconnected'}
               </span>
-              <Button variant="primary" size="small">
-                🎤 Push to Talk
+              
+              {/* Push to Talk */}
+              <Button 
+                variant={isPushToTalkActive ? "danger" : "primary"} 
+                size="small"
+                onMouseDown={handlePushToTalkStart}
+                onMouseUp={handlePushToTalkEnd}
+                onMouseLeave={handlePushToTalkEnd}
+                onTouchStart={handlePushToTalkStart}
+                onTouchEnd={handlePushToTalkEnd}
+              >
+                🎤 {isPushToTalkActive ? 'Speaking...' : 'Push to Talk'}
               </Button>
             </div>
 
+            {/* LCD Display Control */}
             <div className="display-control">
               <div className="display-header">
                 <span className="display-title">
                   <span>📺</span> Remote Display Control
                 </span>
-                <span className="display-type">SSD1306 OLED</span>
+                <span className="display-type">2" LCD</span>
               </div>
               <div className="display-input-row">
                 <input
@@ -280,13 +431,28 @@ const Dashboard = () => {
                   placeholder="Send message to display..."
                   value={displayMessage}
                   onChange={(e) => setDisplayMessage(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSendDisplay()}
                 />
-                <div className="color-picker" style={{ backgroundColor: '#3b82f6' }} />
+                <input
+                  type="color"
+                  className="color-picker-input"
+                  value={displayColor}
+                  onChange={(e) => setDisplayColor(e.target.value)}
+                  title="Background Color"
+                />
+                <label className="alarm-toggle" title="Enable Alarm Mode">
+                  <input
+                    type="checkbox"
+                    checked={displayAlarm}
+                    onChange={(e) => setDisplayAlarm(e.target.checked)}
+                  />
+                  <span>🚨</span>
+                </label>
                 <Button variant="secondary" size="small" onClick={handleSendDisplay}>
                   Send ▶
                 </Button>
               </div>
-              <span className="display-status">✓ Acknowledged</span>
+              <span className="display-status">{lcdStatus || 'Ready'}</span>
             </div>
           </div>
 
@@ -295,14 +461,17 @@ const Dashboard = () => {
             {sensors.map((sensor) => (
               <SensorCard
                 key={sensor.id}
+                id={sensor.id}
                 name={sensor.name}
                 adapterId={sensor.adapterId}
+                sensorType={sensor.sensorType || sensor.type}
                 value={sensor.value}
                 unit={sensor.unit}
                 status={sensor.status}
                 timestamp={sensor.timestamp}
                 rateOfChange={sensor.rateOfChange}
                 sparklineData={sensor.sparklineData}
+                baseboard={sensor.baseboard}
               />
             ))}
           </div>

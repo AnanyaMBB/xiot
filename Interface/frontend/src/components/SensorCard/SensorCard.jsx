@@ -1,8 +1,11 @@
+import { useNavigate } from 'react-router-dom';
 import './SensorCard.css';
 
 const SensorCard = ({
+  id,
   name,
   adapterId,
+  sensorType,
   value,
   unit,
   status = 'active', // 'active' | 'warning' | 'critical' | 'offline'
@@ -10,7 +13,10 @@ const SensorCard = ({
   rateOfChange,
   sparklineData,
   className = '',
+  onClick,
+  baseboard,
 }) => {
+  const navigate = useNavigate();
   const getStatusConfig = () => {
     switch (status) {
       case 'active':
@@ -36,8 +42,36 @@ const SensorCard = ({
     return 'neutral';
   };
 
+  const handleClick = () => {
+    if (onClick) {
+      onClick();
+    } else {
+      // Navigate to sensor analysis page with sensor data
+      navigate('/data', {
+        state: {
+          sensor: {
+            id,
+            name,
+            adapterId,
+            sensorType,
+            value,
+            unit,
+            status,
+            baseboard,
+          }
+        }
+      });
+    }
+  };
+
   return (
-    <div className={`sensor-card sensor-card--${status} ${className}`}>
+    <div 
+      className={`sensor-card sensor-card--${status} sensor-card--clickable ${className}`}
+      onClick={handleClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => e.key === 'Enter' && handleClick()}
+    >
       {(status === 'warning' || status === 'critical') && (
         <div className={`sensor-card-accent sensor-card-accent--${status}`} />
       )}

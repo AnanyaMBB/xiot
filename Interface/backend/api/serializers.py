@@ -32,13 +32,19 @@ class BaseboardSerializer(serializers.ModelSerializer):
 
 
 class BaseboardListSerializer(serializers.ModelSerializer):
-    """Lightweight serializer for list views."""
+    """Serializer for list views with nested devices."""
+    sensors = SensorSerializer(many=True, read_only=True)
+    actuators = ActuatorSerializer(many=True, read_only=True)
     sensor_count = serializers.SerializerMethodField()
     actuator_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Baseboard
-        fields = ['id', 'name', 'identifier', 'status', 'last_seen', 'uptime', 'sensor_count', 'actuator_count']
+        fields = [
+            'id', 'name', 'identifier', 'description', 'status', 
+            'ip_address', 'mqtt_topic', 'last_seen', 'uptime',
+            'sensors', 'actuators', 'sensor_count', 'actuator_count'
+        ]
 
     def get_sensor_count(self, obj):
         return obj.sensors.count()

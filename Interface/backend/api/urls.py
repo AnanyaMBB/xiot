@@ -10,5 +10,6 @@ router.register(r'actuators', views.ActuatorViewSet)
 urlpatterns = [
     path('', include(router.urls)),
     path('status/', views.SystemStatusView.as_view(), name='system_status'),
+    path('lcd/command/', views.LCDCommandView.as_view(), name='lcd_command'),
 ]
 

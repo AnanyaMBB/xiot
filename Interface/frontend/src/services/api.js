@@ -70,13 +70,23 @@ export const apiService = {
 
   // Sensors
   getSensors: (baseboardId) => api.get('/sensors/', { params: { baseboard: baseboardId } }),
+  getAllSensors: () => api.get('/sensors/'),
   getSensor: (id) => api.get(`/sensors/${id}/`),
+  getSensorReadings: (id, params = {}) => api.get(`/sensors/${id}/readings/`, { params }),
+  createSensor: (data) => api.post('/sensors/', data),
   updateSensor: (id, data) => api.patch(`/sensors/${id}/`, data),
+  deleteSensor: (id) => api.delete(`/sensors/${id}/`),
 
   // Actuators
   getActuators: (baseboardId) => api.get('/actuators/', { params: { baseboard: baseboardId } }),
+  getAllActuators: () => api.get('/actuators/'),
   getActuator: (id) => api.get(`/actuators/${id}/`),
+  createActuator: (data) => api.post('/actuators/', data),
   updateActuator: (id, data) => api.patch(`/actuators/${id}/`, data),
+  deleteActuator: (id) => api.delete(`/actuators/${id}/`),
   sendActuatorCommand: (id, command) => api.post(`/actuators/${id}/command/`, command),
+
+  // LCD Command
+  sendLcdCommand: (text, color, alarm) => api.post('/lcd/command/', { text, color, alarm }),
 };
 

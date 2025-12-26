@@ -2,8 +2,11 @@
  * React hook for real-time sensor data via WebSocket.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import websocketService from '../services/websocket';
+
+// How long before an offline sensor is removed (milliseconds)
+const SENSOR_TIMEOUT_MS = 5000;
 
 /**
  * Hook to subscribe to real-time sensor updates.
@@ -28,18 +31,55 @@ export function useSensorData() {
     // Subscribe to sensor updates
     const unsubSensor = websocketService.subscribe('sensor_update', (data) => {
       const { baseboard_id, sensors: sensorList, timestamp } = data;
+      const now = Date.now();
       
       setSensors(prev => {
         const updated = { ...prev };
         
         sensorList.forEach(sensor => {
           const key = `${baseboard_id}:${sensor.i2c_address}`;
-          updated[key] = {
-            ...sensor,
-            baseboard_id,
-            key,
-            lastUpdate: timestamp
-          };
+          const isActive = sensor.status === 'active' && sensor.value !== null;
+          const existing = prev[key];
+          
+          // If sensor was marked as removed and is still offline, skip it
+          if (existing?.removed && !isActive) {
+            return;
+          }
+          
+          if (isActive) {
+            // Sensor is online
+            updated[key] = {
+              ...sensor,
+              baseboard_id,
+              key,
+              lastUpdate: timestamp,
+              offlineSince: null,
+              removed: false
+            };
+          } else {
+            // Sensor is offline
+            const offlineSince = existing?.offlineSince || now;
+            
+            // Check if it's been offline too long
+            if ((now - offlineSince) >= SENSOR_TIMEOUT_MS) {
+              // Mark as removed (will be filtered out)
+              updated[key] = { ...existing, removed: true };
+              console.log(`[Sensor] Marking sensor as removed: ${key}`);
+            } else {
+              // Still showing offline state
+              updated[key] = {
+                ...sensor,
+                baseboard_id,
+                key,
+                lastUpdate: timestamp,
+                offlineSince: offlineSince,
+                removed: false
+              };
+              if (!existing?.offlineSince) {
+                console.log(`[Sensor] Sensor went offline: ${key}`);
+              }
+            }
+          }
         });
         
         return updated;
@@ -67,7 +107,8 @@ export function useSensorData() {
   }, []);
 
   const isConnected = connectionStatus === 'connected';
-  const sensorList = Object.values(sensors);
+  // Filter out removed sensors
+  const sensorList = Object.values(sensors).filter(s => !s.removed);
 
   return {
     sensors: sensorList,

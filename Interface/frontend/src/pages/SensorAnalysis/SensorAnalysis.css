@@ -23,7 +23,45 @@
 
 .analysis-header-left {
   display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.back-btn {
+  margin-top: 4px;
+}
+
+.sensor-title-section {
+  display: flex;
   flex-direction: column;
+}
+
+.sensor-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.sensor-type-badge {
+  padding: 4px 10px;
+  background-color: var(--color-primary-bg);
+  color: var(--color-primary);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  text-transform: capitalize;
+}
+
+.sensor-id {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-subtle);
+  font-family: var(--font-mono);
+}
+
+.sensor-baseboard {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-disabled);
 }
 
 .analysis-title {
@@ -313,6 +351,165 @@
 .status-badge--critical {
   background-color: var(--color-error-bg);
   color: var(--color-error-dark);
+}
+
+/* No Sensor State */
+.no-sensor-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 80px 40px;
+  text-align: center;
+}
+
+.no-sensor-state svg {
+  width: 64px;
+  height: 64px;
+  color: var(--color-text-disabled);
+}
+
+.no-sensor-state h2 {
+  margin: 0;
+  font-size: var(--font-size-xl);
+  color: var(--color-text-secondary);
+}
+
+.no-sensor-state p {
+  margin: 0;
+  color: var(--color-text-subtle);
+  max-width: 400px;
+}
+
+/* Error Banner */
+.error-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background-color: var(--color-error-bg);
+  border: 1px solid var(--color-error-border);
+  border-radius: var(--radius-md);
+  color: var(--color-error-dark);
+  font-size: var(--font-size-sm);
+}
+
+.error-banner button {
+  padding: 4px 12px;
+  background-color: var(--color-error-dark);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+/* Chart Current Value */
+.chart-current-value {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.current-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-subtle);
+}
+
+.current-value {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary);
+}
+
+/* Chart Wrapper */
+.chart-wrapper {
+  width: 100%;
+}
+
+.no-data-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 60px;
+  color: var(--color-text-subtle);
+}
+
+.no-data-message svg {
+  width: 40px;
+  height: 40px;
+  color: var(--color-text-disabled);
+}
+
+/* Legend variants */
+.legend-item--min .legend-line {
+  background: repeating-linear-gradient(
+    90deg,
+    var(--color-success) 0,
+    var(--color-success) 4px,
+    transparent 4px,
+    transparent 8px
+  );
+}
+
+.legend-item--max .legend-line {
+  background: repeating-linear-gradient(
+    90deg,
+    var(--color-error) 0,
+    var(--color-error) 4px,
+    transparent 4px,
+    transparent 8px
+  );
+}
+
+/* Readings Panel */
+.readings-panel {
+  background-color: white;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+  overflow: hidden;
+}
+
+.readings-table {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.readings-table .table-header {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.readings-table .table-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.reading-time {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+}
+
+.reading-value {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  text-align: right;
+}
+
+.no-readings {
+  padding: 40px;
+  text-align: center;
+  color: var(--color-text-subtle);
 }
 
 /* Footer */

@@ -153,7 +153,7 @@
   border: 1px solid var(--color-error-border);
 }
 
-.baseboard-menu-btn {
+.baseboard-action-btn {
   width: 28px;
   height: 28px;
   display: flex;
@@ -161,11 +161,20 @@
   justify-content: center;
   border-radius: var(--radius-md);
   color: var(--color-text-subtle);
-  transition: background-color var(--transition-fast);
+  transition: all var(--transition-fast);
+  background: transparent;
+  border: none;
+  cursor: pointer;
 }
 
-.baseboard-menu-btn:hover {
+.baseboard-action-btn:hover {
   background-color: var(--color-bg-quaternary);
+  color: var(--color-text-primary);
+}
+
+.baseboard-action-btn--danger:hover {
+  background-color: var(--color-error-bg);
+  color: var(--color-error-dark);
 }
 
 /* Card Body */
@@ -356,6 +365,273 @@
 
 .status-dot--success {
   background-color: var(--color-success);
+}
+
+/* Description */
+.baseboard-description {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-subtle);
+  line-height: 1.5;
+  padding: 8px 12px;
+  background-color: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+}
+
+/* Expandable Devices Section */
+.baseboard-expand-btn {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 10px 12px;
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.baseboard-expand-btn:hover {
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+}
+
+.expand-icon {
+  transition: transform var(--transition-fast);
+}
+
+.expand-icon.expanded {
+  transform: rotate(180deg);
+}
+
+.baseboard-devices {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  background-color: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.device-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.device-section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.device-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.device-item {
+  display: grid;
+  grid-template-columns: 1fr 80px 70px 70px;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  background-color: var(--color-bg-primary);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+}
+
+.device-item--active,
+.device-item--running {
+  border-left: 3px solid var(--color-success);
+}
+
+.device-item--warning {
+  border-left: 3px solid var(--color-warning);
+}
+
+.device-item--critical,
+.device-item--error {
+  border-left: 3px solid var(--color-error);
+}
+
+.device-item--offline,
+.device-item--inactive,
+.device-item--disconnected {
+  opacity: 0.6;
+}
+
+.device-name {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+}
+
+.device-type {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-subtle);
+  text-transform: capitalize;
+}
+
+.device-value {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  text-align: right;
+}
+
+.device-status {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+  text-align: right;
+}
+
+.device-status--active,
+.device-status--running {
+  color: var(--color-success-dark);
+}
+
+.device-status--warning {
+  color: var(--color-warning-darker);
+}
+
+.device-status--critical,
+.device-status--error {
+  color: var(--color-error-dark);
+}
+
+.device-status--inactive,
+.device-status--offline,
+.device-status--disconnected {
+  color: var(--color-text-disabled);
+}
+
+.no-devices {
+  text-align: center;
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-sm);
+  padding: 16px;
+}
+
+/* Loading State */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 60px;
+  color: var(--color-text-subtle);
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--color-border-default);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Empty State */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 60px;
+  background-color: var(--color-bg-primary);
+  border: 2px dashed var(--color-border-default);
+  border-radius: var(--radius-lg);
+  text-align: center;
+}
+
+.empty-state svg {
+  width: 48px;
+  height: 48px;
+  color: var(--color-text-disabled);
+}
+
+.empty-state h3 {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  color: var(--color-text-secondary);
+}
+
+.empty-state p {
+  margin: 0;
+  color: var(--color-text-subtle);
+}
+
+/* Error Banner */
+.error-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background-color: var(--color-error-bg);
+  border: 1px solid var(--color-error-border);
+  border-radius: var(--radius-md);
+  color: var(--color-error-dark);
+  font-size: var(--font-size-sm);
+}
+
+.error-banner button {
+  padding: 4px 12px;
+  background-color: var(--color-error-dark);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.error-banner button:hover {
+  opacity: 0.9;
+}
+
+/* Delete Confirmation */
+.delete-confirmation {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.delete-confirmation p {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.delete-confirmation .warning-text {
+  color: var(--color-error-dark);
+  font-size: var(--font-size-sm);
 }
 
 /* Modal Form */

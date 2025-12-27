@@ -74,16 +74,21 @@ class Sensor(models.Model):
 class Actuator(models.Model):
     """Represents an actuator connected to a baseboard."""
     ACTUATOR_TYPES = [
+        ('led', 'LED'),
         ('pwm', 'PWM'),
         ('relay', 'Relay'),
         ('servo', 'Servo'),
         ('motor', 'Motor'),
         ('linear', 'Linear Actuator'),
         ('solenoid', 'Solenoid'),
+        ('buzzer', 'Buzzer'),
+        ('display', 'Display'),
         ('custom', 'Custom'),
     ]
 
     STATUS_CHOICES = [
+        ('on', 'On'),
+        ('off', 'Off'),
         ('running', 'Running'),
         ('stopped', 'Stopped'),
         ('idle', 'Idle'),
@@ -97,7 +102,8 @@ class Actuator(models.Model):
     name = models.CharField(max_length=100)
     actuator_type = models.CharField(max_length=20, choices=ACTUATOR_TYPES)
     actuator_id = models.CharField(max_length=20, blank=True)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='idle')
+    i2c_address = models.CharField(max_length=10, blank=True, help_text="I2C address in hex, e.g., 0x08")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='off')
     current_value = models.FloatField(null=True, blank=True)
     min_value = models.FloatField(default=0)
     max_value = models.FloatField(default=100)

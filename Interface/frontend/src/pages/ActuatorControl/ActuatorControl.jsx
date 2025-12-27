@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import StatusCard from '../../components/StatusCard/StatusCard';
 import ActuatorCard from '../../components/ActuatorCard/ActuatorCard';
 import Button from '../../components/Button/Button';
+import { apiService } from '../../services/api';
 import './ActuatorControl.css';
 
 // Icons
@@ -33,122 +34,132 @@ const ActivityIcon = () => (
   </svg>
 );
 
+const RefreshIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <polyline points="23 4 23 10 17 10" />
+    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+  </svg>
+);
+
 const ChevronDownIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <polyline points="6 9 12 15 18 9" />
   </svg>
 );
 
-// Mock data
-const mockActuators = [
-  {
-    id: 1,
-    name: 'Fan Controller',
-    actuatorId: 'ACT:01',
-    type: 'pwm',
-    status: 'running',
-    currentValue: 65,
-    minValue: 0,
-    maxValue: 100,
-    unit: '%',
-    lastCommand: 'SET 65%',
-    lastCommandLatency: 12,
-  },
-  {
-    id: 2,
-    name: 'Relay Bank A',
-    actuatorId: 'ACT:02',
-    type: 'relay',
-    status: 'running',
-    currentValue: true,
-    lastCommand: 'CLOSE',
-    lastCommandLatency: 8,
-  },
-  {
-    id: 3,
-    name: 'Camera Mount',
-    actuatorId: 'ACT:03',
-    type: 'servo',
-    status: 'holding',
-    currentValue: 90,
-    minValue: 0,
-    maxValue: 180,
-    unit: '°',
-    lastCommand: 'ANGLE 90°',
-    lastCommandLatency: 15,
-  },
-  {
-    id: 4,
-    name: 'Belt Driver',
-    actuatorId: 'ACT:04',
-    type: 'motor',
-    status: 'stopped',
-    currentValue: 0,
-    lastCommand: 'STOP',
-    lastCommandLatency: 10,
-  },
-  {
-    id: 5,
-    name: 'Lift Mechanism',
-    actuatorId: 'ACT:05',
-    type: 'linear',
-    status: 'idle',
-    currentValue: 45,
-    unit: 'mm',
-    lastCommand: 'RETRACT 20mm',
-    lastCommandLatency: 55,
-  },
-  {
-    id: 6,
-    name: 'Door Lock',
-    actuatorId: 'ACT:06',
-    type: 'solenoid',
-    status: 'locked',
-    currentValue: false,
-    lastCommand: 'LOCK',
-    lastCommandLatency: 5,
-  },
-  {
-    id: 7,
-    name: 'Backup Motor',
-    actuatorId: 'ACT:07',
-    type: 'motor',
-    status: 'disconnected',
-    currentValue: 0,
-    lastCommand: '3 minutes ago',
-    lastCommandLatency: null,
-  },
-];
-
 const ActuatorControl = () => {
-  const [selectedBaseboard, setSelectedBaseboard] = useState('MKR-1000-MAIN');
-  const [actuators, setActuators] = useState(mockActuators);
+  const [selectedBaseboard, setSelectedBaseboard] = useState('PI-001');
+  const [actuators, setActuators] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [emergencyStop, setEmergencyStop] = useState(false);
-  const [systemMode, setSystemMode] = useState('Manual Override');
+  const [emergencyLoading, setEmergencyLoading] = useState(false);
+  const [lastSync, setLastSync] = useState(null);
 
-  const handleValueChange = (id, value) => {
-    setActuators(prev => prev.map(act => 
-      act.id === id ? { ...act, currentValue: value } : act
+  // Fetch actuators from API
+  const fetchActuators = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await apiService.getAllActuators();
+      setActuators(response.data);
+      setLastSync(new Date());
+    } catch (err) {
+      console.error('Failed to fetch actuators:', err);
+      setError('Failed to load actuators');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Load actuators on mount and refresh periodically
+  useEffect(() => {
+    fetchActuators();
+    const interval = setInterval(fetchActuators, 10000); // Refresh every 10 seconds
+    return () => clearInterval(interval);
+  }, [fetchActuators]);
+
+  // Handle actuator status change after command is sent
+  const handleActuatorStatusChange = useCallback((updatedActuator) => {
+    setActuators(prev => prev.map(a => 
+      a.id === updatedActuator.id ? updatedActuator : a
     ));
-  };
+    setLastSync(new Date());
+  }, []);
 
-  const handleToggle = (id, state) => {
-    setActuators(prev => prev.map(act => 
-      act.id === id ? { ...act, currentValue: state, status: state ? 'running' : 'stopped' } : act
-    ));
-  };
-
-  const handleEmergencyStop = () => {
+  // Emergency stop - send OFF command to all actuators
+  const handleEmergencyStop = async () => {
+    setEmergencyLoading(true);
     setEmergencyStop(true);
-    setActuators(prev => prev.map(act => ({
-      ...act,
-      status: act.type === 'solenoid' ? 'locked' : 'stopped',
-      currentValue: act.type === 'relay' ? false : 0,
-    })));
+    
+    try {
+      // Send OFF command to all actuators in parallel
+      await Promise.all(
+        actuators.map(actuator => 
+          apiService.sendActuatorCommand(actuator.id, { command: 'off' })
+            .catch(err => console.error(`Failed to stop ${actuator.name}:`, err))
+        )
+      );
+      // Refresh actuator states
+      await fetchActuators();
+    } catch (err) {
+      console.error('Emergency stop failed:', err);
+    } finally {
+      setEmergencyLoading(false);
+    }
   };
 
-  const activeActuators = actuators.filter(a => a.status === 'running' || a.status === 'holding').length;
-  const runningMotors = actuators.filter(a => a.type === 'motor' && a.status === 'running').length;
+  // Reset system after emergency stop
+  const handleResetSystem = () => {
+    setEmergencyStop(false);
+    fetchActuators();
+  };
+
+  // Calculate stats
+  const activeActuators = actuators.filter(a => 
+    a.status === 'on' || a.status === 'running' || a.status === 'holding'
+  ).length;
+  
+  const totalActuators = actuators.length;
+
+  // Format last sync time
+  const formatLastSync = () => {
+    if (!lastSync) return 'Never';
+    const diffMs = Date.now() - lastSync.getTime();
+    const diffSecs = Math.floor(diffMs / 1000);
+    if (diffSecs < 60) return `${diffSecs}s ago`;
+    return `${Math.floor(diffSecs / 60)}m ago`;
+  };
+
+  // Group actuators by type for organized display
+  const getActuatorTypeLabel = (type) => {
+    const labels = {
+      led: '💡 LED',
+      pwm: '⚡ PWM',
+      relay: '🔌 Relay',
+      servo: '🎯 Servo',
+      motor: '⚙️ Motor',
+      linear: '↕️ Linear',
+      solenoid: '🔒 Solenoid',
+      buzzer: '🔊 Buzzer',
+      display: '📺 Display',
+      custom: '🔧 Custom',
+    };
+    return labels[type] || type;
+  };
+
+  if (loading && actuators.length === 0) {
+    return (
+      <div className="actuator-control">
+        <div className="actuator-container">
+          <div className="loading-state">
+            <div className="loading-spinner" />
+            <p>Loading actuators...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="actuator-control">
@@ -157,42 +168,63 @@ const ActuatorControl = () => {
         <header className="actuator-header">
           <div className="actuator-header-left">
             <h1 className="actuator-title">Actuator Control</h1>
-            <p className="actuator-subtitle">Direct control interface for connected actuators</p>
+            <p className="actuator-subtitle">
+              Direct control interface for connected actuators
+              {actuators.length > 0 && ` • ${actuators.length} device${actuators.length !== 1 ? 's' : ''} registered`}
+            </p>
           </div>
           <div className="actuator-header-right">
-            <span className="baseboard-label">Target Baseboard</span>
-            <button className="baseboard-select">
-              <span className="baseboard-indicator" />
-              <span className="baseboard-name">{selectedBaseboard}</span>
-              <ChevronDownIcon />
-            </button>
+            <Button 
+              variant="secondary" 
+              icon={<RefreshIcon />} 
+              onClick={fetchActuators}
+              disabled={loading}
+            >
+              {loading ? 'Refreshing...' : 'Refresh'}
+            </Button>
+            <div className="baseboard-selector">
+              <span className="baseboard-label">Target Baseboard</span>
+              <button className="baseboard-select">
+                <span className="baseboard-indicator" />
+                <span className="baseboard-name">{selectedBaseboard}</span>
+                <ChevronDownIcon />
+              </button>
+            </div>
           </div>
         </header>
+
+        {error && (
+          <div className="error-banner">
+            {error}
+            <button onClick={fetchActuators}>Retry</button>
+          </div>
+        )}
 
         {/* Status Cards */}
         <div className="status-cards-row">
           <StatusCard
             title="Command Link"
-            value="Connected"
+            value={error ? "Error" : "Connected"}
             icon={<WifiIcon />}
-            status="success"
-            badge={{ text: '8ms', variant: 'success' }}
+            status={error ? "error" : "success"}
+            badge={{ text: error ? 'Offline' : 'Live', variant: error ? 'error' : 'success' }}
           />
           <StatusCard
             title="Control Mode"
-            value={systemMode}
+            value={emergencyStop ? "E-Stop Active" : "Manual Override"}
             icon={<SettingsIcon />}
+            status={emergencyStop ? "error" : "default"}
           />
           <StatusCard
             title="Active Actuators"
             value={`${activeActuators}`}
-            subtitle={`of ${actuators.length}`}
+            subtitle={`of ${totalActuators}`}
             icon={<ZapIcon />}
+            status={activeActuators > 0 ? "success" : "default"}
           />
           <StatusCard
-            title="Motors Running"
-            value={`${runningMotors}`}
-            subtitle="total"
+            title="Last Sync"
+            value={formatLastSync()}
             icon={<ActivityIcon />}
           />
         </div>
@@ -203,15 +235,15 @@ const ActuatorControl = () => {
             variant="danger" 
             size="large"
             onClick={handleEmergencyStop}
-            disabled={emergencyStop}
+            disabled={emergencyStop || emergencyLoading || actuators.length === 0}
           >
-            🛑 {emergencyStop ? 'EMERGENCY STOP ACTIVATED' : 'EMERGENCY STOP ALL'}
+            🛑 {emergencyLoading ? 'STOPPING...' : emergencyStop ? 'EMERGENCY STOP ACTIVATED' : 'EMERGENCY STOP ALL'}
           </Button>
           {emergencyStop && (
             <Button 
               variant="secondary" 
               size="small"
-              onClick={() => setEmergencyStop(false)}
+              onClick={handleResetSystem}
             >
               Reset System
             </Button>
@@ -219,36 +251,52 @@ const ActuatorControl = () => {
         </div>
 
         {/* Actuator Grid */}
-        <div className="actuator-grid">
-          {actuators.map((actuator) => (
-            <ActuatorCard
-              key={actuator.id}
-              name={actuator.name}
-              actuatorId={actuator.actuatorId}
-              type={actuator.type}
-              status={emergencyStop && actuator.status !== 'disconnected' ? 'stopped' : actuator.status}
-              currentValue={actuator.currentValue}
-              minValue={actuator.minValue}
-              maxValue={actuator.maxValue}
-              unit={actuator.unit}
-              lastCommand={actuator.lastCommand}
-              lastCommandLatency={actuator.lastCommandLatency}
-              onValueChange={(value) => handleValueChange(actuator.id, value)}
-              onToggle={(state) => handleToggle(actuator.id, state)}
-            />
-          ))}
-        </div>
+        {actuators.length === 0 ? (
+          <div className="empty-state">
+            <ZapIcon />
+            <h3>No actuators registered</h3>
+            <p>Add actuators via the Devices page or Django admin to control them here.</p>
+            <p className="hint">
+              Each actuator type (LED, PWM, Relay, Servo, etc.) gets its own control interface.
+            </p>
+          </div>
+        ) : (
+          <div className="actuator-grid">
+            {actuators.map((actuator) => (
+              <ActuatorCard
+                key={actuator.id}
+                id={actuator.id}
+                name={actuator.name}
+                actuatorId={actuator.actuator_id || `${getActuatorTypeLabel(actuator.actuator_type)} @ ${actuator.i2c_address || 'N/A'}`}
+                type={actuator.actuator_type}
+                status={emergencyStop && actuator.status !== 'disconnected' && actuator.status !== 'error' ? 'off' : actuator.status}
+                currentValue={actuator.current_value}
+                minValue={actuator.min_value || 0}
+                maxValue={actuator.max_value || 100}
+                unit={actuator.unit || '%'}
+                i2cAddress={actuator.i2c_address}
+                lastCommand={actuator.last_command || 'No commands yet'}
+                lastCommandLatency={actuator.last_command_latency}
+                onStatusChange={handleActuatorStatusChange}
+              />
+            ))}
+          </div>
+        )}
 
         {/* Footer */}
         <footer className="actuator-footer">
           <div className="footer-left">
+            <RefreshIcon />
             <span className="footer-text">Last Sync:</span>
-            <span className="footer-value">0.5s ago</span>
+            <span className="footer-value">{formatLastSync()}</span>
           </div>
           <div className="footer-right">
             <span className="footer-status">
-              <span className="status-dot status-dot--warning" />
-              <span>Manual Override Active</span>
+              <span className={`status-dot status-dot--${emergencyStop ? 'error' : activeActuators > 0 ? 'success' : 'warning'}`} />
+              <span>
+                {emergencyStop ? 'Emergency Stop Active' : 
+                 activeActuators > 0 ? `${activeActuators} Active` : 'All Idle'}
+              </span>
             </span>
           </div>
         </footer>
@@ -258,4 +306,3 @@ const ActuatorControl = () => {
 };
 
 export default ActuatorControl;
-

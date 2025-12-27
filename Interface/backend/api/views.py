@@ -108,6 +108,85 @@ class ActuatorViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(baseboard_id=baseboard_id)
         return queryset
 
+    @action(detail=True, methods=['post'])
+    def command(self, request, pk=None):
+        """Send a command to the actuator via MQTT."""
+        actuator = self.get_object()
+        
+        command = request.data.get('command')  # on, off, toggle, set
+        value = request.data.get('value')  # For PWM/servo: 0-100 or angle
+        
+        if not command:
+            return Response(
+                {'error': 'Command is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        valid_commands = ['on', 'off', 'toggle', 'set']
+        if command not in valid_commands:
+            return Response(
+                {'error': f'Invalid command. Valid commands: {valid_commands}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Build MQTT payload
+        payload = {
+            'actuator_id': actuator.actuator_id or str(actuator.id),
+            'i2c_address': actuator.i2c_address,
+            'actuator_type': actuator.actuator_type,
+            'command': command,
+            'value': value,
+            'timestamp': timezone.now().isoformat()
+        }
+        
+        try:
+            mqtt_broker = getattr(settings, 'MQTT_BROKER', 'localhost')
+            mqtt_port = getattr(settings, 'MQTT_PORT', 1883)
+            
+            # Publish to baseboard-specific topic
+            topic = f"xiot/{actuator.baseboard.identifier}/actuators"
+            
+            mqtt_publish.single(
+                topic=topic,
+                payload=json.dumps(payload),
+                hostname=mqtt_broker,
+                port=mqtt_port
+            )
+            
+            # Update actuator state
+            if command in ['on', 'off']:
+                actuator.status = command
+            elif command == 'toggle':
+                actuator.status = 'off' if actuator.status == 'on' else 'on'
+            elif command == 'set' and value is not None:
+                actuator.current_value = value
+                actuator.status = 'running' if value > 0 else 'off'
+            
+            actuator.last_command = f"{command}" + (f":{value}" if value is not None else "")
+            actuator.last_command_time = timezone.now()
+            actuator.save()
+            
+            # Log the event
+            Event.objects.create(
+                source=f'actuator:{actuator.name}',
+                event_type='actuator_command',
+                message=f"Command '{command}' sent to {actuator.name}",
+                severity='info'
+            )
+            
+            return Response({
+                'status': 'sent',
+                'actuator': ActuatorSerializer(actuator).data,
+                'command': command,
+                'value': value
+            })
+            
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 
 class SystemStatusView(APIView):
     """Get overall system status."""

@@ -34,13 +34,15 @@ import paho.mqtt.client as mqtt
 # Check if running on Pi (for hardware features)
 try:
     import spidev
+    import smbus2
     import numpy as np
     from PIL import Image, ImageDraw, ImageFont
     from gpiozero import DigitalOutputDevice, PWMOutputDevice
     ON_PI = True
 except ImportError:
     ON_PI = False
-    print("[WARN] Not running on Pi or missing dependencies - LCD features disabled")
+    smbus2 = None
+    print("[WARN] Not running on Pi or missing dependencies - LCD/I2C features disabled")
 
 
 # =============================================================================
@@ -55,6 +57,10 @@ MQTT_BROKER = "aalsdb.kaist.ac.kr"  # Your MQTT broker
 MQTT_PORT = 1883
 MQTT_LCD_TOPIC = "lcd/display"
 MQTT_SENSOR_TOPIC = "xiot/PI-001/sensors"
+MQTT_ACTUATOR_TOPIC = "xiot/PI-001/actuators"
+
+# I2C Configuration
+I2C_BUS = 1
 
 # Audio device (find with: arecord -l)
 MIC_DEVICE = "plughw:3,0"  # Adjust based on your setup
@@ -486,11 +492,89 @@ async def audio_in_websocket_handler(request):
 # MQTT HANDLER (LCD Commands)
 # =============================================================================
 
-class MQTTHandler:
-    """Handles MQTT communication for LCD and sensor data"""
+class ActuatorController:
+    """Handle I2C communication with actuator adapters"""
     
-    def __init__(self, lcd_manager):
+    # Commands matching ATtiny defines
+    CMD_OFF = 0x00
+    CMD_ON = 0x01
+    CMD_TOGGLE = 0x02
+    CMD_SET = 0x03  # For PWM/servo: followed by value byte
+    
+    def __init__(self):
+        self.bus = None
+        if ON_PI and smbus2:
+            try:
+                self.bus = smbus2.SMBus(I2C_BUS)
+                print(f"[ACTUATOR] I2C bus {I2C_BUS} initialized")
+            except Exception as e:
+                print(f"[ACTUATOR] Failed to initialize I2C: {e}")
+    
+    def parse_i2c_address(self, addr_str):
+        """Parse I2C address from string like '0x08' or '8'"""
+        if not addr_str:
+            return None
+        try:
+            if isinstance(addr_str, int):
+                return addr_str
+            if addr_str.startswith('0x') or addr_str.startswith('0X'):
+                return int(addr_str, 16)
+            return int(addr_str)
+        except ValueError:
+            return None
+    
+    def send_command(self, i2c_address, command, value=None, actuator_type='led'):
+        """Send command to actuator via I2C"""
+        if not self.bus:
+            print(f"[ACTUATOR] I2C bus not available")
+            return False
+        
+        addr = self.parse_i2c_address(i2c_address)
+        if addr is None:
+            print(f"[ACTUATOR] Invalid I2C address: {i2c_address}")
+            return False
+        
+        try:
+            if command == 'on':
+                self.bus.write_byte(addr, self.CMD_ON)
+                print(f"[ACTUATOR] Sent ON to 0x{addr:02X}")
+            elif command == 'off':
+                self.bus.write_byte(addr, self.CMD_OFF)
+                print(f"[ACTUATOR] Sent OFF to 0x{addr:02X}")
+            elif command == 'toggle':
+                self.bus.write_byte(addr, self.CMD_TOGGLE)
+                print(f"[ACTUATOR] Sent TOGGLE to 0x{addr:02X}")
+            elif command == 'set' and value is not None:
+                # For PWM/servo, send SET command followed by value
+                val = int(value)
+                if val < 0:
+                    val = 0
+                elif val > 255:
+                    val = 255
+                self.bus.write_byte_data(addr, self.CMD_SET, val)
+                print(f"[ACTUATOR] Sent SET {val} to 0x{addr:02X}")
+            else:
+                print(f"[ACTUATOR] Unknown command: {command}")
+                return False
+            
+            return True
+            
+        except IOError as e:
+            print(f"[ACTUATOR] I2C error sending to 0x{addr:02X}: {e}")
+            return False
+    
+    def close(self):
+        """Close I2C bus"""
+        if self.bus:
+            self.bus.close()
+
+
+class MQTTHandler:
+    """Handles MQTT communication for LCD, sensors, and actuators"""
+    
+    def __init__(self, lcd_manager, actuator_controller=None):
         self.lcd_manager = lcd_manager
+        self.actuator_controller = actuator_controller
         self.client = mqtt.Client(
             client_id=f"xiot-pi-{datetime.now().strftime('%H%M%S')}",
             clean_session=True,
@@ -505,8 +589,11 @@ class MQTTHandler:
         if rc == 0:
             print(f"[MQTT] Connected to {MQTT_BROKER}:{MQTT_PORT}")
             self.connected = True
+            # Subscribe to LCD and actuator topics
             client.subscribe(MQTT_LCD_TOPIC)
+            client.subscribe(MQTT_ACTUATOR_TOPIC)
             print(f"[MQTT] Subscribed to {MQTT_LCD_TOPIC}")
+            print(f"[MQTT] Subscribed to {MQTT_ACTUATOR_TOPIC}")
         else:
             print(f"[MQTT] Connection failed: {rc}")
             
@@ -517,17 +604,49 @@ class MQTTHandler:
     def _on_message(self, client, userdata, msg):
         try:
             data = json.loads(msg.payload.decode())
-            text = data.get("text", "")
-            color = data.get("color", "WHITE")
-            alarm = data.get("alarm", False)
+            topic = msg.topic
             
-            if self.lcd_manager:
-                self.lcd_manager.show_text(text, color, alarm)
+            if topic == MQTT_LCD_TOPIC:
+                self._handle_lcd_message(data)
+            elif topic == MQTT_ACTUATOR_TOPIC:
+                self._handle_actuator_message(data)
+            else:
+                print(f"[MQTT] Unknown topic: {topic}")
                 
         except json.JSONDecodeError as e:
             print(f"[MQTT] Invalid JSON: {e}")
         except Exception as e:
             print(f"[MQTT] Error processing message: {e}")
+    
+    def _handle_lcd_message(self, data):
+        """Handle LCD display commands"""
+        text = data.get("text", "")
+        color = data.get("color", "WHITE")
+        alarm = data.get("alarm", False)
+        
+        if self.lcd_manager:
+            self.lcd_manager.show_text(text, color, alarm)
+    
+    def _handle_actuator_message(self, data):
+        """Handle actuator commands from interface"""
+        i2c_address = data.get("i2c_address")
+        command = data.get("command")
+        value = data.get("value")
+        actuator_type = data.get("actuator_type", "led")
+        actuator_id = data.get("actuator_id", "unknown")
+        
+        print(f"[MQTT] Actuator command: {command} for {actuator_id} at {i2c_address}")
+        
+        if self.actuator_controller:
+            success = self.actuator_controller.send_command(
+                i2c_address, command, value, actuator_type
+            )
+            if success:
+                print(f"[MQTT] Actuator command executed successfully")
+            else:
+                print(f"[MQTT] Actuator command failed")
+        else:
+            print(f"[MQTT] No actuator controller available")
             
     def start(self):
         """Start MQTT client in background"""
@@ -671,6 +790,9 @@ async def on_shutdown(app):
         
     if app.get('mqtt_handler'):
         app['mqtt_handler'].stop()
+    
+    if app.get('actuator_controller'):
+        app['actuator_controller'].close()
         
     audio_streamer.stop()
     print("[SERVER] Cleanup complete")
@@ -684,12 +806,16 @@ def main():
     # Initialize LCD manager
     lcd_manager = LCDManager()
     
-    # Initialize MQTT handler
-    mqtt_handler = MQTTHandler(lcd_manager)
+    # Initialize actuator controller for I2C communication
+    actuator_controller = ActuatorController()
+    
+    # Initialize MQTT handler with LCD and actuator support
+    mqtt_handler = MQTTHandler(lcd_manager, actuator_controller)
     mqtt_handler.start()
     
     # Create app
     app = create_app(lcd_manager, mqtt_handler)
+    app['actuator_controller'] = actuator_controller
     app.on_shutdown.append(on_shutdown)
     
     # Show startup message on LCD
@@ -697,10 +823,11 @@ def main():
         lcd_manager.show_text("XIOT Ready", "GREEN")
     
     print(f"\nServer starting on port {HTTP_PORT}...")
-    print(f"  Video:     http://0.0.0.0:{HTTP_PORT}/video")
-    print(f"  Audio Out: http://0.0.0.0:{HTTP_PORT}/audio")
-    print(f"  Audio In:  ws://0.0.0.0:{HTTP_PORT}/ws/audio")
-    print(f"  LCD MQTT:  {MQTT_BROKER}:{MQTT_PORT} -> {MQTT_LCD_TOPIC}")
+    print(f"  Video:      http://0.0.0.0:{HTTP_PORT}/video")
+    print(f"  Audio Out:  http://0.0.0.0:{HTTP_PORT}/audio")
+    print(f"  Audio In:   ws://0.0.0.0:{HTTP_PORT}/ws/audio")
+    print(f"  LCD MQTT:   {MQTT_BROKER}:{MQTT_PORT} -> {MQTT_LCD_TOPIC}")
+    print(f"  Actuators:  {MQTT_BROKER}:{MQTT_PORT} -> {MQTT_ACTUATOR_TOPIC}")
     print("=" * 60)
     
     # Run server

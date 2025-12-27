@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import StatusCard from '../../components/StatusCard/StatusCard';
 import SensorCard from '../../components/SensorCard/SensorCard';
 import Button from '../../components/Button/Button';
@@ -475,6 +475,7 @@ const Dashboard = () => {
               />
             ))}
           </div>
+
         </div>
 
         {/* Footer Status */}

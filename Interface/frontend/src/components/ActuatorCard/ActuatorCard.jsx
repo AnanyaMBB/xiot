@@ -1,37 +1,73 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import Button from '../Button/Button';
+import { apiService } from '../../services/api';
 import './ActuatorCard.css';
 
 const ActuatorCard = ({
+  id,  // Database ID for API calls
   name,
   actuatorId,
-  type = 'pwm', // 'pwm' | 'relay' | 'servo' | 'motor' | 'linear' | 'solenoid'
-  status = 'idle', // 'running' | 'stopped' | 'idle' | 'holding' | 'locked' | 'disconnected'
+  type = 'pwm', // 'led' | 'pwm' | 'relay' | 'servo' | 'motor' | 'linear' | 'solenoid' | 'buzzer'
+  status = 'off', // 'on' | 'off' | 'running' | 'stopped' | 'idle' | 'holding' | 'locked' | 'disconnected'
   currentValue,
   minValue = 0,
   maxValue = 100,
   unit = '%',
+  i2cAddress,
   lastCommand,
   lastCommandLatency,
   onValueChange,
   onToggle,
+  onStatusChange,  // Callback to update parent state
   className = '',
 }) => {
   const [localValue, setLocalValue] = useState(currentValue || 0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Send command to actuator via API
+  const sendCommand = useCallback(async (command, value = null) => {
+    if (!id) {
+      console.error('Actuator ID is required for API calls');
+      return;
+    }
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await apiService.sendActuatorCommand(id, { command, value });
+      console.log(`[Actuator] Command sent: ${command}`, response.data);
+      
+      // Update local status based on response
+      if (onStatusChange && response.data?.actuator) {
+        onStatusChange(response.data.actuator);
+      }
+    } catch (err) {
+      console.error('[Actuator] Command failed:', err);
+      setError(err.message || 'Command failed');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [id, onStatusChange]);
 
   const getStatusConfig = () => {
     switch (status) {
+      case 'on':
+        return { label: 'ON', variant: 'success' };
       case 'running':
         return { label: 'Running', variant: 'success' };
       case 'holding':
         return { label: 'Holding', variant: 'success' };
+      case 'off':
       case 'stopped':
       case 'idle':
         return { label: status.charAt(0).toUpperCase() + status.slice(1), variant: 'default' };
       case 'locked':
         return { label: 'Locked', variant: 'error', icon: true };
       case 'disconnected':
-        return { label: 'Disconnected', variant: 'default' };
+      case 'error':
+        return { label: status.charAt(0).toUpperCase() + status.slice(1), variant: 'error' };
       default:
         return { label: status, variant: 'default' };
     }
@@ -42,11 +78,49 @@ const ActuatorCard = ({
   const handleSliderChange = (e) => {
     const value = Number(e.target.value);
     setLocalValue(value);
-    onValueChange?.(value);
   };
+
+  const handleSliderRelease = () => {
+    // Send command when slider is released
+    sendCommand('set', localValue);
+    onValueChange?.(localValue);
+  };
+
+  const handleToggle = () => {
+    const newState = status === 'on' ? 'off' : 'on';
+    sendCommand(newState);
+    onToggle?.(!currentValue);
+  };
+
+  const isOn = status === 'on' || status === 'running';
 
   const renderControl = () => {
     switch (type) {
+      // LED and Buzzer: Simple ON/OFF toggle
+      case 'led':
+      case 'buzzer':
+        return (
+          <div className="actuator-toggle-control">
+            <div 
+              className={`actuator-toggle ${isOn ? 'actuator-toggle--on' : ''} ${isLoading ? 'actuator-toggle--loading' : ''}`}
+              onClick={!isLoading ? handleToggle : undefined}
+            >
+              <div className="actuator-toggle-track" />
+              <div className="actuator-toggle-thumb">
+                {isLoading && <span className="actuator-loading-spinner" />}
+              </div>
+            </div>
+            <span className="actuator-toggle-label">
+              {type === 'led' ? (isOn ? '💡 Light ON' : '🔌 Light OFF') : 
+                               (isOn ? '🔊 Sound ON' : '🔇 Sound OFF')}
+            </span>
+            {i2cAddress && (
+              <span className="actuator-address">I2C: {i2cAddress}</span>
+            )}
+            {error && <span className="actuator-error">{error}</span>}
+          </div>
+        );
+
       case 'pwm':
       case 'servo':
         return (
@@ -67,7 +141,10 @@ const ActuatorCard = ({
                 max={maxValue}
                 value={localValue}
                 onChange={handleSliderChange}
+                onMouseUp={handleSliderRelease}
+                onTouchEnd={handleSliderRelease}
                 className="actuator-slider"
+                disabled={isLoading}
               />
             </div>
             <div className="actuator-slider-labels">
@@ -75,6 +152,7 @@ const ActuatorCard = ({
               <span>{Math.round((maxValue - minValue) / 2)}{unit}</span>
               <span>{maxValue}{unit}</span>
             </div>
+            {error && <span className="actuator-error">{error}</span>}
           </div>
         );
 
@@ -82,15 +160,18 @@ const ActuatorCard = ({
         return (
           <div className="actuator-toggle-control">
             <div 
-              className={`actuator-toggle ${status === 'running' || currentValue ? 'actuator-toggle--on' : ''}`}
-              onClick={() => onToggle?.(!currentValue)}
+              className={`actuator-toggle ${isOn ? 'actuator-toggle--on' : ''} ${isLoading ? 'actuator-toggle--loading' : ''}`}
+              onClick={!isLoading ? handleToggle : undefined}
             >
               <div className="actuator-toggle-track" />
-              <div className="actuator-toggle-thumb" />
+              <div className="actuator-toggle-thumb">
+                {isLoading && <span className="actuator-loading-spinner" />}
+              </div>
             </div>
             <span className="actuator-toggle-label">
-              {currentValue ? 'Toggle to Close' : 'Toggle to Open'}
+              {isOn ? '⚡ Relay CLOSED' : '🔌 Relay OPEN'}
             </span>
+            {error && <span className="actuator-error">{error}</span>}
           </div>
         );
 
@@ -98,10 +179,20 @@ const ActuatorCard = ({
         return (
           <div className="actuator-motor-control">
             <div className="actuator-motor-buttons">
-              <Button variant="danger" size="small" onClick={() => onToggle?.(false)}>
+              <Button 
+                variant="danger" 
+                size="small" 
+                onClick={() => sendCommand('off')}
+                disabled={isLoading}
+              >
                 Stop
               </Button>
-              <Button variant="success" size="small" onClick={() => onToggle?.(true)}>
+              <Button 
+                variant="success" 
+                size="small" 
+                onClick={() => sendCommand('on')}
+                disabled={isLoading}
+              >
                 Start
               </Button>
             </div>
@@ -109,6 +200,7 @@ const ActuatorCard = ({
               <span className="actuator-control-label">RPM Setpoint</span>
               <span className="actuator-rpm-value">{currentValue || 0}</span>
             </div>
+            {error && <span className="actuator-error">{error}</span>}
           </div>
         );
 
@@ -120,15 +212,16 @@ const ActuatorCard = ({
               <span className="actuator-position">Pos: {currentValue || 0}mm</span>
             </div>
             <div className="actuator-linear-buttons">
-              <Button variant="secondary" onClick={() => onValueChange?.('retract')}>
+              <Button variant="secondary" onClick={() => sendCommand('off')} disabled={isLoading}>
                 <span>↓</span>
                 <span>Retract</span>
               </Button>
-              <Button variant="secondary" onClick={() => onValueChange?.('extend')}>
+              <Button variant="secondary" onClick={() => sendCommand('on')} disabled={isLoading}>
                 <span>↑</span>
                 <span>Extend</span>
               </Button>
             </div>
+            {error && <span className="actuator-error">{error}</span>}
           </div>
         );
 
@@ -138,19 +231,31 @@ const ActuatorCard = ({
             <Button 
               variant="secondary" 
               fullWidth 
-              disabled={status === 'locked'}
-              onClick={() => onToggle?.(!currentValue)}
+              disabled={status === 'locked' || isLoading}
+              onClick={handleToggle}
             >
-              🔓 Unlock Zone B
+              🔓 {isOn ? 'Lock' : 'Unlock'} Zone B
             </Button>
             <p className="actuator-solenoid-note">
               Requires supervisor authorization for unlocking during operation.
             </p>
+            {error && <span className="actuator-error">{error}</span>}
           </div>
         );
 
       default:
-        return null;
+        return (
+          <div className="actuator-toggle-control">
+            <Button 
+              variant={isOn ? 'danger' : 'success'}
+              onClick={handleToggle}
+              disabled={isLoading}
+            >
+              {isOn ? 'Turn OFF' : 'Turn ON'}
+            </Button>
+            {error && <span className="actuator-error">{error}</span>}
+          </div>
+        );
     }
   };
 

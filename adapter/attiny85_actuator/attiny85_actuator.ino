@@ -52,7 +52,7 @@ void setup() {
     
     // Configure shift register for actuator mode
     // Adjust config_bits based on your mux/actuator configuration
-    setup_shift_register(B01100011);
+    setup_shift_register(B10010011);
     
     // Configure output pin
     pinMode(outputPin, OUTPUT);

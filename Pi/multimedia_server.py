@@ -58,6 +58,7 @@ MQTT_PORT = 1883
 MQTT_LCD_TOPIC = "lcd/display"
 MQTT_SENSOR_TOPIC = "xiot/PI-001/sensors"
 MQTT_ACTUATOR_TOPIC = "xiot/PI-001/actuators"
+MQTT_DISCOVERY_TOPIC = "xiot/PI-001/discover"  # Trigger device discovery
 
 # I2C Configuration
 I2C_BUS = 1
@@ -589,11 +590,13 @@ class MQTTHandler:
         if rc == 0:
             print(f"[MQTT] Connected to {MQTT_BROKER}:{MQTT_PORT}")
             self.connected = True
-            # Subscribe to LCD and actuator topics
+            # Subscribe to LCD, actuator, and discovery topics
             client.subscribe(MQTT_LCD_TOPIC)
             client.subscribe(MQTT_ACTUATOR_TOPIC)
+            client.subscribe(MQTT_DISCOVERY_TOPIC)
             print(f"[MQTT] Subscribed to {MQTT_LCD_TOPIC}")
             print(f"[MQTT] Subscribed to {MQTT_ACTUATOR_TOPIC}")
+            print(f"[MQTT] Subscribed to {MQTT_DISCOVERY_TOPIC}")
         else:
             print(f"[MQTT] Connection failed: {rc}")
             
@@ -610,6 +613,8 @@ class MQTTHandler:
                 self._handle_lcd_message(data)
             elif topic == MQTT_ACTUATOR_TOPIC:
                 self._handle_actuator_message(data)
+            elif topic == MQTT_DISCOVERY_TOPIC:
+                self._handle_discovery_message(data)
             else:
                 print(f"[MQTT] Unknown topic: {topic}")
                 
@@ -647,6 +652,48 @@ class MQTTHandler:
                 print(f"[MQTT] Actuator command failed")
         else:
             print(f"[MQTT] No actuator controller available")
+    
+    def _handle_discovery_message(self, data):
+        """Handle device discovery trigger from interface"""
+        action = data.get("action", "scan")
+        
+        if action == "scan":
+            print(f"[MQTT] Device discovery triggered from interface")
+            self._run_discovery()
+        else:
+            print(f"[MQTT] Unknown discovery action: {action}")
+    
+    def _run_discovery(self):
+        """Run device discovery script in background"""
+        import os
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        discovery_script = os.path.join(script_dir, "device_discovery.py")
+        
+        if os.path.exists(discovery_script):
+            try:
+                # Run discovery in background thread to not block MQTT
+                def run_async():
+                    result = subprocess.run(
+                        [sys.executable, discovery_script],
+                        capture_output=True,
+                        text=True,
+                        timeout=30
+                    )
+                    if result.returncode == 0:
+                        print(f"[DISCOVERY] Completed successfully")
+                        if result.stdout:
+                            for line in result.stdout.strip().split('\n')[-5:]:
+                                print(f"[DISCOVERY] {line}")
+                    else:
+                        print(f"[DISCOVERY] Failed: {result.stderr}")
+                
+                thread = threading.Thread(target=run_async, daemon=True)
+                thread.start()
+                print(f"[DISCOVERY] Started in background")
+            except Exception as e:
+                print(f"[DISCOVERY] Failed to start: {e}")
+        else:
+            print(f"[DISCOVERY] Script not found: {discovery_script}")
             
     def start(self):
         """Start MQTT client in background"""

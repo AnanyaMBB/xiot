@@ -47,6 +47,14 @@ const ChevronDownIcon = () => (
   </svg>
 );
 
+// Search/Scan Icon
+const SearchIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="11" cy="11" r="8" />
+    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+  </svg>
+);
+
 const ActuatorControl = () => {
   const [selectedBaseboard, setSelectedBaseboard] = useState('PI-001');
   const [actuators, setActuators] = useState([]);
@@ -55,6 +63,8 @@ const ActuatorControl = () => {
   const [emergencyStop, setEmergencyStop] = useState(false);
   const [emergencyLoading, setEmergencyLoading] = useState(false);
   const [lastSync, setLastSync] = useState(null);
+  const [scanning, setScanning] = useState(false);
+  const [scanMessage, setScanMessage] = useState(null);
 
   // Fetch actuators from API
   const fetchActuators = useCallback(async () => {
@@ -113,6 +123,28 @@ const ActuatorControl = () => {
   const handleResetSystem = () => {
     setEmergencyStop(false);
     fetchActuators();
+  };
+
+  // Trigger device discovery scan
+  const handleScanDevices = async () => {
+    setScanning(true);
+    setScanMessage(null);
+    
+    try {
+      const response = await apiService.triggerDiscovery(selectedBaseboard);
+      setScanMessage({ type: 'success', text: response.data.message || 'Scan initiated!' });
+      
+      // Refresh actuators after a short delay to pick up new devices
+      setTimeout(() => {
+        fetchActuators();
+        setScanMessage(null);
+      }, 3000);
+    } catch (err) {
+      console.error('Failed to trigger discovery:', err);
+      setScanMessage({ type: 'error', text: 'Failed to start scan' });
+    } finally {
+      setScanning(false);
+    }
   };
 
   // Calculate stats
@@ -176,6 +208,14 @@ const ActuatorControl = () => {
           <div className="actuator-header-right">
             <Button 
               variant="secondary" 
+              icon={<SearchIcon />} 
+              onClick={handleScanDevices}
+              disabled={scanning}
+            >
+              {scanning ? 'Scanning...' : 'Scan for Devices'}
+            </Button>
+            <Button 
+              variant="secondary" 
               icon={<RefreshIcon />} 
               onClick={fetchActuators}
               disabled={loading}
@@ -197,6 +237,12 @@ const ActuatorControl = () => {
           <div className="error-banner">
             {error}
             <button onClick={fetchActuators}>Retry</button>
+          </div>
+        )}
+
+        {scanMessage && (
+          <div className={`scan-message scan-message--${scanMessage.type}`}>
+            {scanMessage.type === 'success' ? '✓' : '✗'} {scanMessage.text}
           </div>
         )}
 

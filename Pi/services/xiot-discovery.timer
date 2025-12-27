@@ -1,0 +1,16 @@
+[Unit]
+Description=Run XIOT Device Discovery periodically
+
+[Timer]
+# Run 30 seconds after boot
+OnBootSec=30sec
+
+# Then run every 5 minutes
+OnUnitActiveSec=5min
+
+# Add some randomness to avoid thundering herd
+RandomizedDelaySec=10sec
+
+[Install]
+WantedBy=timers.target
+

@@ -88,5 +88,8 @@ export const apiService = {
 
   // LCD Command
   sendLcdCommand: (text, color, alarm) => api.post('/lcd/command/', { text, color, alarm }),
+
+  // Device Discovery
+  triggerDiscovery: (baseboardId = 'PI-001') => api.post('/devices/discover/', { baseboard_id: baseboardId }),
 };
 

@@ -66,7 +66,65 @@ setup_shift_register(B01100011);  // Configuration bits
 
 Modify the configuration byte based on your mux/sensor routing needs.
 
-## Actuator Adapter
+## Auto-Discovery Firmware (Recommended)
+
+### File: `attiny85_autodiscovery/attiny85_autodiscovery.ino`
+
+**Unified firmware** that supports both sensor and actuator modes with automatic device discovery.
+
+### Key Features
+
+- **Plug & Play**: Pi automatically discovers connected devices
+- **Self-identifying**: Responds to IDENTIFY command with device type
+- **Unified codebase**: One firmware, configure via `#define`
+
+### Configuration
+
+Edit these defines before flashing:
+
+```cpp
+#define SLAVE_ADDR 8  // I2C address (8-119)
+
+// Device type (choose ONE)
+#define DEVICE_CLASS    DEVICE_CLASS_ACTUATOR  // or DEVICE_CLASS_SENSOR
+#define DEVICE_SUBTYPE  SUBTYPE_LED            // See table below
+#define DEVICE_CAPS     (CAP_WRITE | CAP_DIGITAL)
+```
+
+### Device Subtypes
+
+| Sensors | Actuators |
+|---------|-----------|
+| `SUBTYPE_TEMPERATURE` (0x10) | `SUBTYPE_LED` (0x20) |
+| `SUBTYPE_HUMIDITY` (0x11) | `SUBTYPE_RELAY` (0x21) |
+| `SUBTYPE_PRESSURE` (0x12) | `SUBTYPE_SERVO` (0x22) |
+| `SUBTYPE_LIGHT` (0x13) | `SUBTYPE_MOTOR` (0x23) |
+| `SUBTYPE_MOTION` (0x14) | `SUBTYPE_BUZZER` (0x24) |
+| `SUBTYPE_GAS` (0x15) | `SUBTYPE_PWM` (0x25) |
+| `SUBTYPE_VIBRATION` (0x16) | `SUBTYPE_CUSTOM_ACT` (0x2F) |
+
+### Discovery Protocol
+
+When the Pi sends `0xFF` (IDENTIFY), the adapter responds with 4 bytes:
+
+| Byte | Name | Description |
+|------|------|-------------|
+| 0 | Magic | `0xA5` (confirms XIOT device) |
+| 1 | Class | `0x01`=Sensor, `0x02`=Actuator |
+| 2 | Subtype | Device type code |
+| 3 | Capabilities | Bitfield |
+
+### Usage Flow
+
+1. **Flash firmware** with your device type configured
+2. **Set I2C address** (change `SLAVE_ADDR`)
+3. **Connect to Pi** I2C bus
+4. **Wait ~30 seconds** for auto-discovery
+5. **Device appears** in the web interface
+
+---
+
+## Actuator Adapter (Legacy)
 
 ### File: `attiny85_actuator.ino`
 

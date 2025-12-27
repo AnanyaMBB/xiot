@@ -286,3 +286,226 @@ class LCDCommandView(APIView):
                 {'error': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+class DeviceRegistrationView(APIView):
+    """
+    Auto-discovery endpoint for registering devices from Pi.
+    
+    Accepts device info from the Pi's discovery script and creates/updates
+    the corresponding Sensor or Actuator in the database.
+    """
+    permission_classes = [AllowAny]  # Pi doesn't have auth token
+
+    # Sensor type mappings (from discovery protocol to model choices)
+    SENSOR_TYPE_MAP = {
+        'temperature': 'temperature',
+        'humidity': 'humidity',
+        'pressure': 'pressure',
+        'light': 'light',
+        'motion': 'motion',
+        'gas': 'gas',
+        'vibration': 'vibration',
+        'custom': 'custom',
+    }
+
+    # Actuator type mappings
+    ACTUATOR_TYPE_MAP = {
+        'led': 'led',
+        'relay': 'relay',
+        'servo': 'servo',
+        'motor': 'motor',
+        'buzzer': 'buzzer',
+        'pwm': 'pwm',
+        'custom': 'custom',
+    }
+
+    def post(self, request):
+        """Register a discovered device."""
+        baseboard_id = request.data.get('baseboard_id')
+        i2c_address = request.data.get('i2c_address')
+        device_class = request.data.get('device_class')  # 'sensor' or 'actuator'
+        device_type = request.data.get('device_type')    # subtype name
+        capabilities = request.data.get('capabilities', [])
+
+        # Validate required fields
+        if not all([baseboard_id, i2c_address, device_class, device_type]):
+            return Response(
+                {'error': 'Missing required fields: baseboard_id, i2c_address, device_class, device_type'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Find or create baseboard
+        baseboard, board_created = Baseboard.objects.get_or_create(
+            identifier=baseboard_id,
+            defaults={
+                'name': f'Baseboard {baseboard_id}',
+                'description': f'Auto-discovered baseboard',
+                'status': 'online',
+                'mqtt_topic': f'xiot/{baseboard_id}/sensors',
+            }
+        )
+
+        if board_created:
+            Event.objects.create(
+                source='discovery',
+                event_type='baseboard_discovered',
+                message=f"New baseboard discovered: {baseboard_id}",
+                severity='info'
+            )
+
+        # Create or update device based on class
+        if device_class == 'sensor':
+            return self._register_sensor(baseboard, i2c_address, device_type, capabilities)
+        elif device_class == 'actuator':
+            return self._register_actuator(baseboard, i2c_address, device_type, capabilities)
+        else:
+            return Response(
+                {'error': f"Unknown device class: {device_class}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    def _register_sensor(self, baseboard, i2c_address, device_type, capabilities):
+        """Register or update a sensor."""
+        sensor_type = self.SENSOR_TYPE_MAP.get(device_type, 'custom')
+        
+        # Generate a name from type and address
+        name = f"{device_type.replace('_', ' ').title()} ({i2c_address})"
+        
+        # Determine unit based on sensor type
+        unit_map = {
+            'temperature': '°C',
+            'humidity': '%',
+            'pressure': 'hPa',
+            'light': 'lux',
+            'gas': 'ppm',
+            'vibration': 'g',
+        }
+        unit = unit_map.get(sensor_type, '')
+
+        sensor, created = Sensor.objects.update_or_create(
+            baseboard=baseboard,
+            i2c_address=i2c_address,
+            defaults={
+                'name': name,
+                'sensor_type': sensor_type,
+                'unit': unit,
+                'status': 'active',
+            }
+        )
+
+        if created:
+            Event.objects.create(
+                source='discovery',
+                event_type='sensor_discovered',
+                message=f"New sensor discovered: {name} at {i2c_address}",
+                severity='info'
+            )
+
+        return Response({
+            'created': created,
+            'device_class': 'sensor',
+            'id': sensor.id,
+            'name': sensor.name,
+            'type': sensor.sensor_type,
+            'i2c_address': sensor.i2c_address,
+            'baseboard': baseboard.identifier,
+        }, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
+    def _register_actuator(self, baseboard, i2c_address, device_type, capabilities):
+        """Register or update an actuator."""
+        actuator_type = self.ACTUATOR_TYPE_MAP.get(device_type, 'custom')
+        
+        # Generate a name from type and address
+        name = f"{device_type.replace('_', ' ').title()} ({i2c_address})"
+        
+        # Determine min/max values based on actuator type
+        if actuator_type in ['pwm', 'servo']:
+            min_val, max_val = 0, 255
+            unit = ''
+        elif actuator_type == 'motor':
+            min_val, max_val = -100, 100
+            unit = '%'
+        else:
+            min_val, max_val = 0, 1
+            unit = ''
+
+        actuator, created = Actuator.objects.update_or_create(
+            baseboard=baseboard,
+            i2c_address=i2c_address,
+            defaults={
+                'name': name,
+                'actuator_type': actuator_type,
+                'status': 'off',
+                'min_value': min_val,
+                'max_value': max_val,
+                'unit': unit,
+            }
+        )
+
+        if created:
+            Event.objects.create(
+                source='discovery',
+                event_type='actuator_discovered',
+                message=f"New actuator discovered: {name} at {i2c_address}",
+                severity='info'
+            )
+
+        return Response({
+            'created': created,
+            'device_class': 'actuator',
+            'id': actuator.id,
+            'name': actuator.name,
+            'type': actuator.actuator_type,
+            'i2c_address': actuator.i2c_address,
+            'baseboard': baseboard.identifier,
+        }, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
+
+class TriggerDiscoveryView(APIView):
+    """
+    Trigger device discovery on a baseboard via MQTT.
+    
+    Sends an MQTT message to the Pi to run the discovery script.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        baseboard_id = request.data.get('baseboard_id', 'PI-001')
+        
+        payload = {
+            'action': 'scan',
+            'timestamp': timezone.now().isoformat()
+        }
+        
+        topic = f"xiot/{baseboard_id}/discover"
+        
+        try:
+            mqtt_broker = getattr(settings, 'MQTT_BROKER', 'localhost')
+            mqtt_port = getattr(settings, 'MQTT_PORT', 1883)
+            
+            mqtt_publish.single(
+                topic=topic,
+                payload=json.dumps(payload),
+                hostname=mqtt_broker,
+                port=mqtt_port
+            )
+            
+            Event.objects.create(
+                source='interface',
+                event_type='discovery_triggered',
+                message=f"Device discovery triggered for {baseboard_id}",
+                severity='info'
+            )
+            
+            return Response({
+                'status': 'triggered',
+                'baseboard_id': baseboard_id,
+                'message': 'Discovery scan initiated. New devices will appear shortly.'
+            })
+            
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

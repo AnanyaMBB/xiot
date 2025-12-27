@@ -1,0 +1,20 @@
+[Unit]
+Description=XIOT Device Auto-Discovery Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=pi
+WorkingDirectory=/home/pi/xiot/Pi
+Environment="XIOT_API_URL=http://aalsdb.kaist.ac.kr:8000/api"
+Environment="XIOT_BASEBOARD_ID=PI-001"
+ExecStart=/usr/bin/python3 /home/pi/xiot/Pi/device_discovery.py
+
+# Restart on failure
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+

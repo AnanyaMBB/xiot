@@ -1,9 +1,10 @@
 /**
- * ATtiny85 I2C Actuator Adapter
+ * ATtiny85 I2C Actuator Adapter with Auto-Discovery
  * 
  * This program configures the ATtiny85 as an actuator node that:
  * - Receives commands from master (Raspberry Pi) over I2C
  * - Controls output pins based on received commands
+ * - Responds to IDENTIFY command (0xFF) with device info
  * 
  * I2C Address: 8 (configurable)
  * 
@@ -11,6 +12,7 @@
  *   0x00 - Turn output OFF
  *   0x01 - Turn output ON
  *   0x02 - Toggle output
+ *   0xFF - IDENTIFY (triggers response on next read)
  */
 
 #include <TinyWireS.h>
@@ -31,11 +33,19 @@ uint8_t outputState = LOW;
 // Command handling
 volatile uint8_t receivedCommand = 0xFF;
 volatile bool hasNewCommand = false;
+volatile bool identifyRequested = false;
 
 // Commands
-#define CMD_OFF    0x00
-#define CMD_ON     0x01
-#define CMD_TOGGLE 0x02
+#define CMD_OFF      0x00
+#define CMD_ON       0x01
+#define CMD_TOGGLE   0x02
+#define CMD_IDENTIFY 0xFF
+
+// Device identification (for auto-discovery)
+#define XIOT_MAGIC   0xA5
+#define DEV_CLASS    0x02  // Actuator
+#define DEV_SUBTYPE  0x20  // LED
+#define DEV_CAPS     0x12  // Write + Digital
 
 void setup_shift_register(int config_bits) {
     digitalWrite(latchPin, LOW);
@@ -61,6 +71,7 @@ void setup() {
     // Initialize as I2C slave (takes over PB0=SDA, PB2=SCL)
     TinyWireS.begin(SLAVE_ADDR);
     TinyWireS.onReceive(receiveEvent);
+    TinyWireS.onRequest(requestEvent);
 }
 
 void loop() {
@@ -79,11 +90,32 @@ void loop() {
 void receiveEvent(uint8_t numBytes) {
     if (numBytes > 0) {
         receivedCommand = TinyWireS.read();
-        hasNewCommand = true;
+        
+        // Check for IDENTIFY command
+        if (receivedCommand == CMD_IDENTIFY) {
+            identifyRequested = true;
+        } else {
+            hasNewCommand = true;
+        }
     }
     // Drain any extra bytes
     while (TinyWireS.available()) {
         TinyWireS.read();
+    }
+}
+
+// I2C request handler - send data to master
+void requestEvent() {
+    if (identifyRequested) {
+        // Send device identification (4 bytes)
+        TinyWireS.write(XIOT_MAGIC);    // 0xA5
+        TinyWireS.write(DEV_CLASS);     // 0x02 (actuator)
+        TinyWireS.write(DEV_SUBTYPE);   // 0x20 (LED)
+        TinyWireS.write(DEV_CAPS);      // 0x12 (write+digital)
+        identifyRequested = false;
+    } else {
+        // Send current state
+        TinyWireS.write(outputState);
     }
 }
 
